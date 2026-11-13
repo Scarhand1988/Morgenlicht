@@ -1,0 +1,6 @@
+.gradle/
+build/
+app/build/
+local.properties
+# Wird beim Bau aus den Web-Dateien im Hauptordner befüllt
+app/src/main/assets/

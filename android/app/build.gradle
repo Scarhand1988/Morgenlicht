@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Versionsnummer kommt beim Bau auf GitHub aus der Laufnummer
+def buildNumber = (System.getenv('VERSION_CODE') ?: '1') as int
+
+android {
+    namespace 'de.scarhand.morgenlicht'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'de.scarhand.morgenlicht'
+        minSdk 26
+        targetSdk 35
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    signingConfigs {
+        release {
+            // Eigene Schlüssel über Umgebungsvariablen, sonst der mitgelieferte Schlüssel aus dem Repo,
+            // damit jede neue APK sich über die alte installieren lässt.
+            def ownStore = System.getenv('KEYSTORE_FILE')
+            storeFile ownStore ? file(ownStore) : rootProject.file('morgenlicht.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'morgenlicht'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'morgenlicht'
+            keyPassword System.getenv('KEY_PASSWORD') ?: 'morgenlicht'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

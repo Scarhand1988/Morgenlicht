@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Morgenlicht" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/morgenlicht_dunkel</item>
+        <item name="android:colorBackground">@color/morgenlicht_dunkel</item>
+        <item name="android:statusBarColor">@color/morgenlicht_dunkel</item>
+        <item name="android:navigationBarColor">@color/morgenlicht_dunkel</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+    <color name="morgenlicht_dunkel">#19202B</color>
+</resources>

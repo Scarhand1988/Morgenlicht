@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Das Web-App-Icon ist "maskable"; der Rand sorgt dafür, dass der sichtbare Kreis das ganze Motiv zeigt. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_src"
+    android:inset="8.3%" />
