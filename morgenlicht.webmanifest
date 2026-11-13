@@ -1,0 +1,19 @@
+{
+  "name": "Morgenlicht",
+  "short_name": "Morgenlicht",
+  "description": "Lichtwecker: Sonnenaufgang auf dem Display und sanfte Naturtöne.",
+  "lang": "de",
+  "start_url": "Morgenlicht.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#19202b",
+  "theme_color": "#19202b",
+  "icons": [
+    {"src": "morgenlicht-icon.svg", "sizes": "any", "type": "image/svg+xml"},
+    {"src": "morgenlicht-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "morgenlicht-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "morgenlicht-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

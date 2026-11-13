@@ -1,0 +1,8 @@
+{
+  "name": "morgenlicht",
+  "private": true,
+  "description": "Lichtwecker im Browser",
+  "scripts": {
+    "test": "node --test tests/zeit.test.js tests/klang.test.js"
+  }
+}
