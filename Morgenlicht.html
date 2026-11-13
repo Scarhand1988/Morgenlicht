@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morgenlicht</title>
+<style>
+*{box-sizing:border-box}body{margin:0;color:#fff3e7;background:#17141e;font:16px system-ui,sans-serif}button,input,select{font:inherit}button,select,input{color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ffc892;outline-offset:4px}[hidden]{display:none!important}
+main{max-width:490px;margin:auto;padding:24px 20px 36px}h1,h2,p{margin:0}h1{font:normal 46px Georgia,serif;letter-spacing:-2px}header p,.muted{color:#cfbdc9}header p{margin-top:5px}
+.landscape{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(180deg,#37304e 2%,#8a5368 53%,#ef9a75 90%);min-height:215px;border-radius:26px;margin:22px 0 16px;display:grid;place-items:start center;padding:23px}
+.sun{position:absolute;z-index:-2;bottom:13%;width:105px;aspect-ratio:1;border-radius:50%;background:#ffc78b;box-shadow:0 0 65px #ffd291a8}
+.ridge{position:absolute;z-index:-1;inset:55% -1% 0;background:#594059;clip-path:polygon(0 49%,14% 27%,26% 38%,42% 68%,63% 34%,81% 18%,100% 43%,100% 100%,0 100%)}
+.ridge.front{inset:67% -1% 0;background:#2b253d;clip-path:polygon(0 59%,18% 20%,38% 44%,52% 76%,67% 57%,85% 32%,100% 45%,100% 100%,0 100%)}
+.clock{border:0;background:transparent;padding:0;color:#fff3e7;font-size:49px;font-weight:300;letter-spacing:-2px;color-scheme:dark;max-width:100%}.clock::-webkit-calendar-picker-indicator{opacity:.7;width:21px;cursor:pointer}.time-label{display:block;text-align:center;font-size:14px;margin-bottom:2px}
+.panel{background:#241e2b;border:1px solid #3b3041;border-radius:22px;padding:16px;margin-bottom:12px}.duration{display:flex;align-items:center;justify-content:space-between;gap:10px}select{background:#322838;border:1px solid #524258;border-radius:10px;padding:7px 8px}h2{font-size:16px;margin-bottom:10px}
+.sounds{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.sounds button{background:#302738;border:1px solid #4b3d50;border-radius:11px;padding:10px 3px;font-size:14px}.sounds button[aria-pressed=true]{color:#ffd7b3;border-color:#d99875;background:#4a343d}
+.listen{background:none;border:0;padding:10px 0 0;color:#ffd7b3;text-decoration:underline;text-underline-offset:4px}.actions{display:grid;gap:8px}.actions button,.stop{border-radius:14px;min-height:46px;padding:10px;border:1px solid #695364;background:transparent}.actions .primary,.stop{background:#ffc892;color:#2b1823;border-color:transparent;font-weight:650}.muted{font-size:13px;line-height:1.45;margin-top:8px}.status{min-height:21px;color:#ffd7b3;font-size:14px;margin-top:8px}
+.stage{position:fixed;inset:0;background:#000;display:grid;place-items:end center;padding:16px 16px max(24px,env(safe-area-inset-bottom));z-index:2}.stage:fullscreen{width:100%;height:100%}.stop{background:#1c1522;color:#fff;border:1px solid #ad8492;padding:10px 18px;opacity:0;pointer-events:none}.stage.show-controls .stop,.stop:focus-visible{opacity:1;pointer-events:auto}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+</style>
+<main id="settings">
+  <header><h1>Morgenlicht</h1><p>Sanft aufwachen mit Licht und Naturtönen.</p></header>
+  <div class="landscape">
+    <div class="sun"></div><div class="ridge"></div><div class="ridge front"></div>
+    <div><label class="time-label" for="wake">Weckzeit</label><input class="clock" id="wake" type="time" value="07:00" required></div>
+  </div>
+  <div class="panel duration"><label for="duration">Licht wird heller über</label><select id="duration"><option value="10">10 Min.</option><option value="20">20 Min.</option><option value="30" selected>30 Min.</option></select></div>
+  <section class="panel" aria-labelledby="sounds-label">
+    <h2 id="sounds-label">Weckton</h2>
+    <div class="sounds" role="group" aria-label="Naturton auswählen">
+      <button type="button" data-sound="sea" aria-pressed="true">Meer</button>
+      <button type="button" data-sound="forest" aria-pressed="false">Wald</button>
+      <button type="button" data-sound="rain" aria-pressed="false">Regen</button>
+    </div>
+    <button type="button" class="listen" id="listen">Ton anhören</button>
+  </section>
+  <div class="actions">
+    <button class="primary" type="button" id="preview">Sonnenaufgang testen · 15 Sek.</button>
+    <button type="button" id="arm">Browser-Wecker starten</button>
+  </div>
+  <p class="muted">Tippe während des Sonnenaufgangs auf die Lichtfläche, um „Beenden“ einzublenden. Für den Browser-Wecker muss das Handy entsperrt und diese Seite sichtbar bleiben.</p>
+  <p class="status" id="status" role="status"></p>
+</main>
+<section class="stage" id="stage" hidden aria-label="Sonnenaufgang">
+  <p class="sr-only" id="phase" role="status"></p>
+  <button type="button" class="stop" id="stop">Beenden</button>
+</section>
+<script>
+'use strict';
+const byId = id => document.getElementById(id);
+const wake = byId('wake');
+const duration = byId('duration');
+const stage = byId('stage');
+const status = byId('status');
+const listen = byId('listen');
+const sounds = [...document.querySelectorAll('[data-sound]')];
+const formatTime = new Intl.DateTimeFormat('de-DE', {hour:'2-digit', minute:'2-digit'});
+let selected = 'sea';
+let context;
+let noise;
+let playback;
+let sampleTimer;
+let currentRun;
+let screenLock;
+let frameTimer;
+
+try {
+  const saved = JSON.parse(localStorage.getItem('morgenlicht') || '{}');
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(saved.wake)) wake.value = saved.wake;
+  if (['10','20','30'].includes(saved.duration)) duration.value = saved.duration;
+  if (sounds.some(button => button.dataset.sound === saved.selected)) selected = saved.selected;
+} catch {}
+
+function updateSelection() {
+  sounds.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sound === selected)));
+}
+function save() {
+  try { localStorage.setItem('morgenlicht', JSON.stringify({wake:wake.value, duration:duration.value, selected})); } catch {}
+}
+async function unlockAudio() {
+  const AudioEngine = window.AudioContext || window.webkitAudioContext;
+  if (!AudioEngine) throw new Error('Web Audio unavailable');
+  context ??= new AudioEngine();
+  await context.resume();
+  if (context.state !== 'running') throw new Error('Audio suspended');
+  if (noise) return;
+  noise = context.createBuffer(1, context.sampleRate * 3, context.sampleRate);
+  const samples = noise.getChannelData(0);
+  for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+}
+function stopSound() {
+  clearTimeout(sampleTimer);
+  listen.textContent = 'Ton anhören';
+  if (!playback) return;
+  clearInterval(playback.birds);
+  playback.nodes.forEach(node => node.stop());
+  playback.master.disconnect();
+  playback = null;
+}
+function playSound(fade = 2) {
+  const now = context.currentTime;
+  const master = context.createGain();
+  master.gain.setValueAtTime(0, now);
+  master.gain.linearRampToValueAtTime(0.38, now + fade);
+  master.connect(context.destination);
+  const source = context.createBufferSource();
+  source.buffer = noise;
+  source.loop = true;
+  const filter = context.createBiquadFilter();
+  const voices = {
+    sea: {type:'lowpass', frequency:480, rate:0.16, level:0.56, depth:0.36},
+    forest: {type:'lowpass', frequency:620, rate:0.26, level:0.18, depth:0.07},
+    rain: {type:'bandpass', frequency:1850, rate:0.42, level:0.43, depth:0.045}
+  };
+  const voice = voices[selected];
+  filter.type = voice.type;
+  filter.frequency.value = voice.frequency;
+  const texture = context.createGain();
+  texture.gain.value = voice.level;
+  const swell = context.createOscillator();
+  swell.frequency.value = voice.rate;
+  const depth = context.createGain();
+  depth.gain.value = voice.depth;
+  swell.connect(depth).connect(texture.gain);
+  source.connect(filter).connect(texture).connect(master);
+  source.start();
+  swell.start();
+  playback = {master, nodes:[source, swell]};
+  if (selected !== 'forest') return;
+  const chirp = () => {
+    const start = context.currentTime + 0.02;
+    const base = 1250 + Math.random() * 800;
+    for (let note = 0; note < 3; note++) {
+      const time = start + note * 0.16;
+      const bird = context.createOscillator();
+      const envelope = context.createGain();
+      bird.frequency.setValueAtTime(base + note * 120, time);
+      bird.frequency.exponentialRampToValueAtTime(base * 1.43, time + 0.07);
+      bird.frequency.exponentialRampToValueAtTime(base * 0.84, time + 0.12);
+      envelope.gain.setValueAtTime(0, time);
+      envelope.gain.linearRampToValueAtTime(0.07, time + 0.035);
+      envelope.gain.linearRampToValueAtTime(0, time + 0.12);
+      bird.connect(envelope).connect(master);
+      bird.start(time);
+      bird.stop(time + 0.13);
+    }
+  };
+  chirp();
+  playback.birds = setInterval(chirp, 3100);
+}
+
+function nextWake(value, now = new Date()) {
+  const [hour, minute] = value.split(':').map(Number);
+  const target = new Date(now);
+  target.setHours(hour, minute, 0, 0);
+  if (target <= now) {
+    target.setDate(target.getDate() + 1);
+    target.setHours(hour, minute, 0, 0);
+  }
+  return +target;
+}
+const lightColors = [
+  [0, [0, 0, 0]],
+  [0.24, [34, 1, 0]],
+  [0.5, [138, 23, 2]],
+  [0.76, [239, 109, 18]],
+  [1, [255, 245, 196]]
+];
+function paint(progress) {
+  const endIndex = lightColors.findIndex(([at], index) => index > 0 && progress <= at);
+  const [start, dark] = lightColors[endIndex - 1];
+  const [end, bright] = lightColors[endIndex];
+  const fraction = (progress - start) / (end - start);
+  const color = dark.map((channel, index) => Math.round(channel + (bright[index] - channel) * fraction));
+  stage.style.backgroundColor = 'rgb(' + color.join(',') + ')';
+}
+function render() {
+  if (!currentRun) return;
+  const now = Date.now();
+  const {start, end, preview} = currentRun;
+  const progress = Math.min(1, Math.max(0, (now - start) / (end - start)));
+  paint(progress);
+  const ringing = now >= end;
+  const phase = byId('phase');
+  const label = ringing ? 'Zeit aufzuwachen' : now < start ? 'Wecker aktiv · Licht ab ' + formatTime.format(start) : 'Sonnenaufgang';
+  if (phase.textContent !== label) phase.textContent = label;
+  if (ringing && !currentRun.ringing) {
+    currentRun.ringing = true;
+    stage.classList.add('show-controls');
+    playSound();
+  }
+  if (preview && now >= end + 8000) finish();
+}
+async function keepScreenOn() {
+  const run = currentRun;
+  if (!run || document.hidden || screenLock && !screenLock.released) return;
+  try {
+    const lock = await navigator.wakeLock.request('screen');
+    if (currentRun === run) screenLock = lock;
+    else await lock.release();
+  } catch {}
+}
+function finish() {
+  const trigger = currentRun?.trigger;
+  currentRun = null;
+  clearInterval(frameTimer);
+  stopSound();
+  if (screenLock) void screenLock.release();
+  screenLock = null;
+  if (document.fullscreenElement === stage) void document.exitFullscreen().catch(() => {});
+  stage.hidden = true;
+  byId('settings').inert = false;
+  trigger?.focus();
+}
+let starting = false;
+async function start(preview, trigger) {
+  if (starting || currentRun || !wake.reportValidity()) return;
+  starting = true;
+  stopSound();
+  const audioReady = unlockAudio();
+  stage.classList.remove('show-controls');
+  paint(0);
+  stage.hidden = false;
+  byId('settings').inert = true;
+  const fullscreen = stage.requestFullscreen?.().catch(() => {});
+  try { await audioReady; } catch {
+    finish();
+    void fullscreen?.then(() => {
+      if (!currentRun && document.fullscreenElement === stage) void document.exitFullscreen().catch(() => {});
+    });
+    status.textContent = 'Ton konnte nicht gestartet werden. Prüfe die Audiofreigabe im Browser.';
+    trigger.focus();
+    return;
+  } finally { starting = false; }
+  status.textContent = '';
+  const now = Date.now();
+  const end = preview ? now + 15000 : nextWake(wake.value, new Date(now));
+  const start = preview ? now : end - Number(duration.value) * 60000;
+  currentRun = {start, end, preview, trigger};
+  byId('stop').focus();
+  render();
+  frameTimer = setInterval(render, 125);
+  void keepScreenOn();
+}
+
+updateSelection();
+wake.addEventListener('change', save);
+duration.addEventListener('change', save);
+sounds.forEach(button => button.addEventListener('click', () => {
+  stopSound();
+  selected = button.dataset.sound;
+  updateSelection();
+  save();
+}));
+listen.addEventListener('click', async () => {
+  if (playback) { stopSound(); return; }
+  try {
+    await unlockAudio();
+    if (starting || currentRun || playback) return;
+    status.textContent = '';
+    playSound(0.35);
+    listen.textContent = 'Hörprobe stoppen';
+    sampleTimer = setTimeout(stopSound, 12000);
+  } catch { status.textContent = 'Ton konnte nicht gestartet werden.'; }
+});
+byId('preview').addEventListener('click', event => start(true, event.currentTarget));
+byId('arm').addEventListener('click', event => start(false, event.currentTarget));
+byId('stop').addEventListener('click', finish);
+stage.addEventListener('click', event => {
+  if (event.target === stage) stage.classList.toggle('show-controls');
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentRun) { render(); void keepScreenOn(); }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && currentRun) finish();
+});
+</script>
+</html>
