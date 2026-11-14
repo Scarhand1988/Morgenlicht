@@ -45,9 +45,24 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
+      - name: Eigenen Signaturschlüssel einrichten (falls als Geheimnis hinterlegt)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "Eigener Schlüssel wird verwendet."
+          else
+            echo "Kein eigenes Geheimnis gefunden, es wird der Schlüssel aus dem Repo verwendet."
+          fi
+
       - name: APK bauen
         env:
           VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle -p android assembleRelease --no-daemon --stacktrace
 
       - name: APK als Release bereitstellen

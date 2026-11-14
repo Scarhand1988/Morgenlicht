@@ -1,5 +1,5 @@
 // Offline-Speicher für Morgenlicht: erst Netz, bei fehlender Verbindung der gespeicherte Stand.
-const CACHE = 'morgenlicht-v9';
+const CACHE = 'morgenlicht-v10';
 const FILES = [
   'Morgenlicht.html',
   'morgenlicht.css',

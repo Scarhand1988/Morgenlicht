@@ -184,3 +184,12 @@ dialog#agendaDlg .agenda-sub{margin-top:4px;color:var(--muted)}
 .agenda-list li{display:grid;grid-template-columns:5.5em 1fr;gap:10px;font-size:17px}
 .agenda-list .when{color:var(--muted);font-variant-numeric:tabular-nums}
 .agenda-list li.none{display:block;color:var(--muted)}
+
+.daytimes{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.daytimes summary{cursor:pointer;font-weight:600;font-size:15px}
+.daytimes .hint{margin:8px 0}
+.daytime{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
+.daytime input{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font:inherit;min-width:7.5em}
+
+h3.group{margin:22px 0 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h3.group:first-of-type{margin-top:14px}

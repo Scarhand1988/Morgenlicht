@@ -18,13 +18,13 @@
   }
 
   /** Nächster Weckzeitpunkt nach `now` (ms), nur an den gewählten Wochentagen (0 = Sonntag). */
-  function nextWake(value, activeDays, now) {
-    const parsed = parseTime(value);
-    if (!parsed) throw new RangeError('Ungültige Weckzeit: ' + value);
-    const [hour, minute] = parsed;
+  function nextWake(value, activeDays, now, times) {
+    if (!parseTime(value)) throw new RangeError('Ungültige Weckzeit: ' + value);
     for (let offset = 0; offset <= 7; offset++) {
       const target = new Date(now);
       target.setDate(target.getDate() + offset);
+      // Eigene Zeit für diesen Wochentag, sonst die Standard-Weckzeit
+      const [hour, minute] = parseTime(times && times[target.getDay()]) || parseTime(value);
       target.setHours(hour, minute, 0, 0);
       if (+target > now && (!activeDays.length || activeDays.includes(target.getDay()))) return +target;
     }
@@ -33,7 +33,7 @@
 
   /** Lichtbeginn, Weckzeit und Einschlaflicht für eine Nacht. Minutenangaben in `settings`. */
   function plan(settings, now) {
-    const end = nextWake(settings.wake, settings.days, now);
+    const end = nextWake(settings.wake, settings.days, now, settings.times);
     let start = end - settings.lead * MINUTE;
     const shortened = start < now;
     if (shortened) start = now;

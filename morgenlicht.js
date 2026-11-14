@@ -18,6 +18,8 @@ const brightnessEl = $('brightness');
 const lightOnEl = $('lightOn');
 const clockOnEl = $('clockOn');
 const agendaOnEl = $('agendaOn');
+const dawnSoundEl = $('dawnSound');
+const alarmNative = window.MorgenlichtAlarm || null; // Systemalarm, nur in der Android-App vorhanden
 const calendar = window.MorgenlichtKalender || null; // nur in der Android-App vorhanden
 const brightnessOnEl = $('brightnessOn');
 const sceneSel = $('scene');
@@ -46,6 +48,8 @@ const END_COLOR = [255, 245, 196];
 
 let selected = 'sea';
 let days = [];
+let dayTimes = {}; // eigene Weckzeit je Wochentag (0 = Sonntag), leer = Standardzeit
+const dayTimeInputs = [...document.querySelectorAll('[data-daytime]')];
 let context, buffers;
 let customInfo = null, customBuffer = null;
 let playback = null, sampleTimer, vibTimer;
@@ -63,6 +67,7 @@ try {
   if (Z.parseTime(s.wake)) wake.value = s.wake;
   if ([10, 15, 20, 25, 30].includes(Number(s.duration))) duration.value = String(s.duration);
   if (SOUNDS.includes(s.selected)) selected = s.selected;
+  if (s.dayTimes && typeof s.dayTimes === 'object') dayTimes = Object.fromEntries(Object.entries(s.dayTimes).filter(([d, t]) => d >= 0 && d <= 6 && Z.parseTime(t)));
   if (Array.isArray(s.days)) days = [...new Set(s.days.filter(d => Number.isInteger(d) && d >= 0 && d <= 6))];
   if (Number(s.volume) >= 10 && Number(s.volume) <= 100) volumeEl.value = String(s.volume);
   if (hasOption(snoozeSel, s.snooze)) snoozeSel.value = s.snooze;
@@ -73,6 +78,7 @@ try {
   if (typeof s.brightnessOn === 'boolean') brightnessOnEl.checked = s.brightnessOn;
   if (typeof s.clockOn === 'boolean') clockOnEl.checked = s.clockOn;
   if (typeof s.agendaOn === 'boolean') agendaOnEl.checked = s.agendaOn;
+  if (typeof s.dawnSound === 'boolean') dawnSoundEl.checked = s.dawnSound;
   if (typeof s.vibrate === 'boolean') vibrateEl.checked = s.vibrate;
   if (typeof s.sleepSound === 'boolean') sleepSoundEl.checked = s.sleepSound;
 } catch {}
@@ -80,7 +86,7 @@ try {
 function save() {
   try {
     localStorage.setItem(SET_KEY, JSON.stringify({
-      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, clockOn:clockOnEl.checked, agendaOn:agendaOnEl.checked, brightnessOn:brightnessOnEl.checked,
+      wake:wake.value, dayTimes, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, clockOn:clockOnEl.checked, agendaOn:agendaOnEl.checked, dawnSound:dawnSoundEl.checked, brightnessOn:brightnessOnEl.checked,
       snooze:snoozeSel.value, sleep:sleepSel.value, scene:sceneSel.value,
       vibrate:vibrateEl.checked, sleepSound:sleepSoundEl.checked
     }));
@@ -90,7 +96,7 @@ const brightness = () => brightnessOnEl.checked ? Number(brightnessEl.value) / 1
 const dim = rgb => rgb.map(channel => Math.round(channel * brightness()));
 const volume = () => Number(volumeEl.value) / 100;
 const setText = (id, text) => { const el = $(id); if (el.textContent !== text) el.textContent = text; };
-const settingsNow = () => ({wake:wake.value, days, lead:lightOnEl.checked ? Number(duration.value) : 0, sleep:Number(sleepSel.value)});
+const settingsNow = () => ({wake:wake.value, days, times:dayTimes, lead:lightOnEl.checked ? Number(duration.value) : 0, sleep:Number(sleepSel.value)});
 const sleepOnlyMinutes = () => Number(sleepSel.value) || SLEEP_ONLY_DEFAULT;
 
 function setFill(range) {
@@ -279,7 +285,7 @@ function startPlayback(mode, opts = {}) {
   stopSound();
   const ac = context, now = ac.currentTime, v = volume();
   const master = ac.createGain();
-  master.gain.setValueAtTime(0.0001, now);
+  master.gain.setValueAtTime(opts.from || 0.0001, now);
   master.connect(ac.destination);
   let kind = selected === 'custom' && !customBuffer ? 'sea' : selected;
   if (SYNTH_FALLBACK[kind] && !buffers.recorded[kind]) kind = SYNTH_FALLBACK[kind];
@@ -291,6 +297,9 @@ function startPlayback(mode, opts = {}) {
   } else if (mode === 'sleep') {
     master.gain.linearRampToValueAtTime(v * 0.3, now + 4);
     master.gain.linearRampToValueAtTime(0.0001, now + Math.max(6, opts.seconds));
+  } else if (mode === 'dawn') {
+    // Sehr leiser Naturton, der mit dem Licht langsam lauter wird
+    master.gain.linearRampToValueAtTime(v * 0.2, now + Math.max(6, opts.seconds));
   } else if (opts.preview) {
     master.gain.linearRampToValueAtTime(v * 0.6, now + 2);
   } else {
@@ -382,6 +391,10 @@ function enterPhase(run, phase, now) {
     run.sleepSoundStarted = true;
     startPlayback('sleep', {seconds:(run.sleepEnd - now) / 1000});
   }
+  if (phase === 'sunrise' && run.dawnSound && !run.dawnStarted && context && !run.preview) {
+    run.dawnStarted = true;
+    startPlayback('dawn', {seconds:(run.end - now) / 1000});
+  }
   if (phase === 'ring' && !run.ringing) startRing(run, now);
   setText('phase', phaseLabel(phase, run));
   if (phase === 'ring') $('snoozeBtn').focus();
@@ -390,7 +403,7 @@ function startRing(run, now) {
   run.ringing = true;
   run.ringSince = now;
   stage.classList.remove('show-controls');
-  startPlayback('alarm', {preview:run.preview, repeat:run.ringCount > 0});
+  startPlayback('alarm', {preview:run.preview, repeat:run.ringCount > 0, from:run.dawnStarted ? volume() * 0.2 : 0});
   void ensureAudioRunning().then(updateAudioHint);
   if (run.vibrate) startVibration();
 }
@@ -585,6 +598,26 @@ function closeStage() {
   settingsEl.inert = false;
   exitFullscreen();
 }
+/** Android-App: nach dem Wecken den nächsten Wiederholungstermin beim System anmelden, sonst alles abmelden */
+function planNextAlarm(reason) {
+  if (!alarmNative) return;
+  try {
+    if (days.length && reason !== 'off') {
+      const p = Z.plan(settingsNow(), Date.now() + 60000);
+      alarmNative.schedule(p.start, p.end);
+    } else alarmNative.cancel();
+  } catch {}
+}
+/** Der Wecker hat die App geöffnet: Licht und Ton laufen ohne Tippen weiter */
+window.morgenlichtAlarmLaunch = function () {
+  if (!alarmNative || currentRun || starting) return;
+  let plan = {};
+  try { plan = JSON.parse(alarmNative.getPlan()); } catch {}
+  if (!Number.isFinite(plan.end)) return;
+  const saved = loadSavedRun();
+  start({alarm:true, saved:saved && saved.end === plan.end ? saved
+    : {start:plan.start || plan.end, end:plan.end, sleepStart:0, sleepEnd:0, snoozeUntil:0, ringCount:0, autoSnoozes:0}}, null);
+};
 function finish(reason) {
   const run = currentRun;
   if (!run) return;
@@ -598,7 +631,7 @@ function finish(reason) {
   stopScreenFallback();
   closeStage();
   updateAudioHint();
-  if (!run.preview && !run.sleepOnly) clearRun();
+  if (!run.preview && !run.sleepOnly) { clearRun(); planNextAlarm(reason); }
   const now = Date.now();
   if (run.preview) status.textContent = 'Test beendet.';
   else if (run.sleepOnly) status.textContent = reason === 'sleepdone' ? 'Einschlaflicht beendet. Gute Nacht!' : 'Einschlaflicht ausgeschaltet.';
@@ -607,7 +640,7 @@ function finish(reason) {
   else if (reason === 'awake') {
     let text = Z.greeting(now) + '! Wecker beendet.';
     if (days.length) {
-      const next = Z.nextWake(wake.value, days, now);
+      const next = Z.nextWake(wake.value, days, now, dayTimes);
       text += ' Nächster Termin: ' + Z.dayWord(next, now, false) + ' um ' + fmtTime.format(next) + ' – stell den Wecker abends wieder.';
     }
     status.textContent = text;
@@ -630,7 +663,7 @@ async function start(opts, trigger) {
   settingsEl.inert = true;
   const fullscreen = stage.requestFullscreen?.({navigationUI:'hide'}).catch(() => {});
   try {
-    await unlockAudio();
+    try { await unlockAudio(); } catch (error) { if (!opts.alarm) throw error; } // Wecker darf auch ohne Audiofreigabe starten (Hinweis „Tippen“ erscheint)
     if (selected === 'custom') await loadCustom();
     await waitForRecordings();
   } catch (error) {
@@ -655,11 +688,13 @@ async function start(opts, trigger) {
     snoozeUntil:times.snoozeUntil || 0, ringCount:times.ringCount || 0, autoSnoozes:times.autoSnoozes || 0,
     preview:!!opts.preview, sleepOnly:!!opts.sleepOnly, trigger, ringing:false, phase:null, wasHidden:false,
     vibrate:vibrateEl.checked && canVibrate, sleepSound:sleepSoundEl.checked, scene:sceneSel.value,
+    dawnSound:dawnSoundEl.checked,
     snoozeMs:opts.preview ? 5000 : Number(snoozeSel.value) * 60000
   };
   $('resume').hidden = true;
   setText('stopLabel', opts.preview ? 'Test beenden' : opts.sleepOnly ? 'Licht ausschalten' : 'Wecker ausschalten');
   if (!simple) saveRun();
+  if (!simple && alarmNative) { try { alarmNative.schedule(currentRun.start, currentRun.end); } catch {} }
   render();
   stage.style.transition = opts.preview ? 'none' : 'background-color 1s linear';
   stage.focus({preventScroll:true});
@@ -671,6 +706,13 @@ function fillChecklist() {
   const items = [];
   const charge = 'Ladekabel anschließen – das Display bleibt die ganze Nacht an.';
   items.push(battery ? (battery.charging ? ['ok', 'Ladekabel ist angeschlossen.'] : ['warn', charge]) : ['', charge]);
+  if (alarmNative) {
+    items.push(['ok', 'Der Wecker wird beim System angemeldet und startet Licht und Ton auch bei gesperrtem Handy.']);
+    items.push(...systemWarnings());
+    items.push(['', 'Displayhelligkeit hochstellen. Die App kann sie nicht selbst regeln – das Licht wird nur so hell wie dein Display.']);
+    fillList($('checklist'), items);
+    return;
+  }
   items.push(canWakeLock
     ? ['ok', 'Dieser Browser kann das Display wach halten.']
     : ['warn', 'Dieser Browser kann das Display nicht sicher wach halten. Stell die automatische Bildschirmsperre in den Handy-Einstellungen ab.']);
@@ -679,11 +721,32 @@ function fillChecklist() {
   items.push(['', 'Seite geöffnet lassen: Handy nicht sperren und nicht in eine andere App wechseln.']);
   fillList($('checklist'), items);
 }
+/** Android-App: Freigaben des Systems prüfen, die für einen zuverlässigen Wecker nötig sind */
+function systemWarnings() {
+  let s = {};
+  try { s = JSON.parse(alarmNative.status()); } catch {}
+  const rows = [];
+  if (s.exactAlarm === false) rows.push(['warn', 'Exakte Alarme sind nicht erlaubt – der Sonnenaufgang startet evtl. zu spät.', 'exact']);
+  if (s.notifications === false) rows.push(['warn', 'Benachrichtigungen sind aus – ohne sie kann der Wecker die App nicht öffnen.', 'notifications']);
+  if (s.fullScreen === false) rows.push(['warn', 'Vollbild-Benachrichtigungen sind nicht erlaubt – bei gesperrtem Handy öffnet sich die App nicht von selbst.', 'fullscreen']);
+  if (Number.isFinite(s.mediaVolume) && s.mediaVolume < 20) rows.push(['warn', 'Die Medienlautstärke ist sehr niedrig (' + s.mediaVolume + ' %). Der Weckton läuft darüber.']);
+  if (s.batteryFree === false) rows.push(['', 'Tipp: Nimm Morgenlicht von der Akku-Optimierung aus, damit Android den Wecker nicht verzögert.', 'battery']);
+  if (!rows.length && Object.keys(s).length) rows.push(['ok', 'Alle nötigen Freigaben sind erteilt.']);
+  return rows;
+}
 function fillList(list, items) {
-  list.replaceChildren(...items.map(([cls, text]) => {
+  list.replaceChildren(...items.map(([cls, text, kind]) => {
     const li = document.createElement('li');
     if (cls) li.className = cls;
     li.textContent = text;
+    if (kind && alarmNative) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'link inline';
+      button.textContent = ' Öffnen';
+      button.addEventListener('click', () => { try { alarmNative.openSettings(kind); } catch {} });
+      li.append(button);
+    }
     return li;
   }));
 }
@@ -697,7 +760,7 @@ function openConfirm() {
   const notes = [];
   if (p.shortened) notes.push('Bis zur Weckzeit ist weniger Zeit als der Lichtvorlauf – das Licht beginnt sofort und wird entsprechend schneller hell.');
   if (p.sleepEnd) notes.push('Zuerst ' + Math.round((p.sleepEnd - p.sleepStart) / 60000) + ' Min. Einschlaflicht' + (sleepSoundEl.checked ? ' mit leisem Naturton' : '') + ', danach die dunkle Nachtanzeige.');
-  if (days.length) notes.push('Im Browser musst du den Wecker trotz Wiederholung jeden Abend neu stellen.');
+  if (days.length) notes.push(alarmNative ? 'Der Wecker wiederholt sich automatisch an den gewählten Tagen.' : 'Im Browser musst du den Wecker trotz Wiederholung jeden Abend neu stellen.');
   $('confirmNote').hidden = !notes.length;
   setText('confirmNote', notes.join(' '));
   fillChecklist();
@@ -745,6 +808,7 @@ async function runDiagnostics() {
   add(fileStore ? 'ok' : 'warn', 'Eigenen Ton speichern', fileStore ? 'funktioniert' : 'nicht möglich – eigener Ton gilt nur bis zum Neuladen');
   const controlled = !!navigator.serviceWorker?.controller;
   add(controlled ? 'ok' : '', 'Offline-Betrieb', controlled ? 'aktiv' : 'nicht aktiv (nur über https verfügbar)');
+  if (alarmNative) systemWarnings().forEach(([cls, text]) => add(cls, 'System', text));
   add(standalone ? 'ok' : '', 'Als App geöffnet', standalone ? 'ja' : 'nein – im Browser-Tab');
   fillList($('diagList'), rows);
   diagText = 'Morgenlicht – Gerätecheck ' + new Date(Date.now()).toLocaleString('de-DE') + '\n' +
@@ -783,11 +847,12 @@ timeDlg.addEventListener('keydown', event => { if (event.key === 'Enter' && even
 duration.addEventListener('input', updateOverview);
 duration.addEventListener('change', () => { save(); updateOverview(); });
 sleepSel.addEventListener('change', () => { save(); updateOverview(); });
-[snoozeSel, vibrateEl, sleepSoundEl, sceneSel, brightnessEl].forEach(el => el.addEventListener('change', save));
+[snoozeSel, vibrateEl, sleepSoundEl, sceneSel, brightnessEl, dawnSoundEl].forEach(el => el.addEventListener('change', save));
 brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
 [lightOnEl, brightnessOnEl].forEach(el => el.addEventListener('change', () => { save(); updateOverview(); }));
 clockOnEl.addEventListener('change', () => { save(); applyClock(); });
 $('agendaRow').hidden = !calendar;
+$('morningGroup').hidden = !calendar;
 agendaOnEl.addEventListener('change', () => {
   save();
   if (agendaOnEl.checked && calendar) { try { calendar.requestPermission(); } catch {} }
@@ -821,6 +886,13 @@ volumeEl.addEventListener('input', () => {
     playback.master.gain.cancelScheduledValues(context.currentTime);
     playback.master.gain.setTargetAtTime(volume(), context.currentTime, 0.05);
   }
+});
+dayTimeInputs.forEach(input => {
+  input.value = dayTimes[input.dataset.daytime] || '';
+  input.addEventListener('change', () => {
+    if (Z.parseTime(input.value)) dayTimes[input.dataset.daytime] = input.value; else delete dayTimes[input.dataset.daytime];
+    save(); updateOverview();
+  });
 });
 dayButtons.forEach(button => button.addEventListener('click', () => {
   const day = Number(button.dataset.day);
@@ -873,7 +945,11 @@ listen.addEventListener('click', async () => {
 });
 $('arm').addEventListener('click', openConfirm);
 $('confirmCancel').addEventListener('click', () => confirmDlg.close());
-$('confirmGo').addEventListener('click', () => { confirmDlg.close(); start({}, $('arm')); });
+$('confirmGo').addEventListener('click', () => {
+  confirmDlg.close();
+  if (alarmNative) { try { alarmNative.requestNotifications(); } catch {} }
+  start({}, $('arm'));
+});
 $('flashBtn').addEventListener('click', showFlash);
 flashDlg.addEventListener('click', () => flashDlg.close());
 flashDlg.addEventListener('close', () => { clearTimeout(flashTimer); if (confirmDlg.open) $('flashBtn').focus(); });
@@ -919,7 +995,8 @@ updateOverview();
 setInterval(() => { if (!currentRun) updateOverview(); }, 30000);
 
 savedRun = loadSavedRun();
-if (savedRun) {
+if (alarmNative) { try { if (alarmNative.consumeLaunch()) window.morgenlichtAlarmLaunch(); } catch {} }
+if (savedRun && !currentRun && !starting && !alarmNative) {
   const now = Date.now();
   const when = Z.dayWord(savedRun.end, now, false) + ' um ' + fmtTime.format(savedRun.end);
   setText('resumeText', savedRun.end > now

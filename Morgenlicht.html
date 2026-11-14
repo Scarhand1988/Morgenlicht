@@ -51,6 +51,17 @@
       <button type="button" class="chip" data-day="6" aria-pressed="false" aria-label="Samstag">Sa</button>
       <button type="button" class="chip" data-day="0" aria-pressed="false" aria-label="Sonntag">So</button>
     </div>
+    <details class="daytimes" id="daytimes">
+      <summary>Andere Weckzeit für einzelne Tage</summary>
+      <p class="hint">Leer lassen heißt: es gilt die Weckzeit oben. Nur gewählte Wochentage klingeln.</p>
+      <label class="daytime"><span>Montag</span><input type="time" data-daytime="1" aria-label="Weckzeit Montag"></label>
+      <label class="daytime"><span>Dienstag</span><input type="time" data-daytime="2" aria-label="Weckzeit Dienstag"></label>
+      <label class="daytime"><span>Mittwoch</span><input type="time" data-daytime="3" aria-label="Weckzeit Mittwoch"></label>
+      <label class="daytime"><span>Donnerstag</span><input type="time" data-daytime="4" aria-label="Weckzeit Donnerstag"></label>
+      <label class="daytime"><span>Freitag</span><input type="time" data-daytime="5" aria-label="Weckzeit Freitag"></label>
+      <label class="daytime"><span>Samstag</span><input type="time" data-daytime="6" aria-label="Weckzeit Samstag"></label>
+      <label class="daytime"><span>Sonntag</span><input type="time" data-daytime="0" aria-label="Weckzeit Sonntag"></label>
+    </details>
   </section>
 
   <section class="panel lead-panel">
@@ -92,25 +103,10 @@
 
   <details class="panel more">
     <summary>Weitere Einstellungen</summary>
-    <div class="setting">
-      <label for="snooze">Schlummern</label>
-      <select id="snooze"><option value="5">5 Min.</option><option value="9" selected>9 Min.</option><option value="10">10 Min.</option><option value="15">15 Min.</option></select>
-    </div>
-    <div class="setting" id="vibrateRow">
-      <label for="vibrate">Vibration beim Klingeln</label>
-      <input type="checkbox" id="vibrate" checked>
-    </div>
+    <h3 class="group">Licht</h3>
     <div class="setting">
       <label class="row-label" for="scene"><span>Sonnenaufgang</span><span class="hint">„Fläche“ gibt das meiste Licht</span></label>
       <select id="scene"><option value="flat" selected>Fläche</option><option value="sun">Mit Sonne</option></select>
-    </div>
-    <div class="setting" id="agendaRow" hidden>
-      <label class="row-label" for="agendaOn"><span>Termine am Morgen</span><span class="hint">Nach „Aufstehen“ zeigt die App kurz, was heute im Kalender steht. Die Termine bleiben auf dem Handy.</span></label>
-      <input type="checkbox" id="agendaOn">
-    </div>
-    <div class="setting">
-      <label class="row-label" for="clockOn"><span>Uhrzeit in der Nachtansicht</span><span class="hint">Aus: Der Bildschirm bleibt nachts ganz dunkel, nur der Wecker-Hinweis bleibt</span></label>
-      <input type="checkbox" id="clockOn" checked>
     </div>
     <div class="setting">
       <label class="row-label" for="brightnessOn"><span>Helligkeit selbst einstellen</span><span class="hint">Aus: Das Licht wird am Ende voll hell</span></label>
@@ -125,12 +121,36 @@
     <p class="hint">Wie hell der Sonnenaufgang am Ende wird. Bei 100 % gibt das Display sein volles Licht, kleinere Werte machen den Verlauf dunkler. „Sonnenaufgang testen“ zeigt dir das Ergebnis.</p>
     </div>
     <div class="setting">
+      <label class="row-label" for="clockOn"><span>Uhrzeit in der Nachtansicht</span><span class="hint">Aus: Der Bildschirm bleibt nachts ganz dunkel, nur der Wecker-Hinweis bleibt</span></label>
+      <input type="checkbox" id="clockOn" checked>
+    </div>
+
+    <h3 class="group">Ton und Schlafen</h3>
+    <div class="setting">
+      <label class="row-label" for="dawnSound"><span>Leiser Naturton beim Sonnenaufgang</span><span class="hint">Der Ton setzt schon mit dem Licht ganz leise ein und wird langsam lauter</span></label>
+      <input type="checkbox" id="dawnSound">
+    </div>
+    <div class="setting">
+      <label for="snooze">Schlummern</label>
+      <select id="snooze"><option value="5">5 Min.</option><option value="9" selected>9 Min.</option><option value="10">10 Min.</option><option value="15">15 Min.</option></select>
+    </div>
+    <div class="setting" id="vibrateRow">
+      <label for="vibrate">Vibration beim Klingeln</label>
+      <input type="checkbox" id="vibrate" checked>
+    </div>
+    <div class="setting">
       <label class="row-label" for="sleep"><span>Einschlaflicht</span><span class="hint">Warmes Licht dimmt langsam herunter</span></label>
       <select id="sleep"><option value="0" selected>Aus</option><option value="10">10 Min.</option><option value="20">20 Min.</option><option value="30">30 Min.</option></select>
     </div>
     <div class="setting">
       <label for="sleepSound">Naturton zum Einschlafen</label>
       <input type="checkbox" id="sleepSound" checked>
+    </div>
+
+    <h3 class="group" id="morningGroup">Am Morgen</h3>
+    <div class="setting" id="agendaRow" hidden>
+      <label class="row-label" for="agendaOn"><span>Termine am Morgen</span><span class="hint">Nach „Aufstehen“ zeigt die App kurz, was heute im Kalender steht. Die Termine bleiben auf dem Handy.</span></label>
+      <input type="checkbox" id="agendaOn">
     </div>
     <div class="setting-actions">
       <button type="button" class="secondary small" id="sleepOnly">Nur Einschlaflicht</button>

@@ -25,3 +25,11 @@ Der Browser-Wecker funktioniert nur, solange die Seite geöffnet und das Handy e
 | `morgenlicht-sw.js`, `morgenlicht.webmanifest`, Icons | Installation und Offline-Betrieb |
 | `sounds/` | Naturaufnahmen, Herkunft in `sounds/QUELLEN.md` |
 | `tests/` | Automatische Tests: `npm test` |
+
+## Android-App: echter Wecker
+
+Die APK meldet Lichtbeginn und Weckzeit beim System an (`AlarmManager`). Zur Zeit öffnet eine Vollbild-Benachrichtigung die App über dem Sperrbildschirm, und die Seite startet Sonnenaufgang und Ton von selbst. Bei Wiederholungstagen wird der nächste Termin automatisch angemeldet; nach Neustart oder Zeitänderung plant `BootReceiver` neu.
+
+Beim Wecker stellen und unter „Gerät prüfen“ meldet die App fehlende Freigaben (exakte Alarme, Benachrichtigungen, Vollbild-Benachrichtigung, Medienlautstärke, Akku-Optimierung).
+
+**Eigener Signaturschlüssel:** Legt man in den Repo-Einstellungen unter Secrets die Werte `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` und `KEY_PASSWORD` an, signiert der Workflow damit. Ohne diese Werte nimmt er den öffentlichen Schlüssel aus `android/morgenlicht.keystore`. Der Wechsel von einem zum anderen Schlüssel verlangt einmal das Deinstallieren der App.

@@ -2,6 +2,8 @@ package de.scarhand.morgenlicht;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.ContentUris;
 import android.content.Intent;
@@ -9,7 +11,10 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CalendarContract;
+import android.media.AudioManager;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
@@ -48,6 +53,7 @@ public class MainActivity extends Activity {
     private static final String START = "https://" + HOST + "/assets/www/Morgenlicht.html";
     private static final int FILE_REQUEST = 1;
     private static final int CALENDAR_REQUEST = 2;
+    private static final int NOTIFICATION_REQUEST = 3;
 
     /**
      * Die App läuft im Vollbild und hält das Display selbst wach (FLAG_KEEP_SCREEN_ON).
@@ -69,6 +75,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private WebViewAssetLoader loader;
     private ValueCallback<Uri[]> fileCallback;
+    /** Die App wurde vom Wecker geöffnet und die Seite soll Licht und Ton starten. */
+    private boolean alarmLaunch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,11 +147,23 @@ public class MainActivity extends Activity {
         }
 
         web.addJavascriptInterface(new CalendarBridge(), "MorgenlichtKalender");
+        web.addJavascriptInterface(new AlarmBridge(), "MorgenlichtAlarm");
+        alarmLaunch = savedInstanceState == null && getIntent().hasExtra(AlarmScheduler.EXTRA_PHASE);
 
         hideSystemBars();
 
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) {
             web.loadUrl(START);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent.hasExtra(AlarmScheduler.EXTRA_PHASE)) {
+            alarmLaunch = true;
+            web.evaluateJavascript("window.morgenlichtAlarmLaunch&&window.morgenlichtAlarmLaunch()", null);
         }
     }
 
@@ -294,6 +314,91 @@ public class MainActivity extends Activity {
                     out.put(event);
                 }
             }
+        }
+    }
+
+    /** Schnittstelle für die Seite: Systemalarm planen, Zustand der Freigaben melden. */
+    private class AlarmBridge {
+        @JavascriptInterface
+        public void schedule(double start, double end) {
+            AlarmScheduler.schedule(MainActivity.this, (long) start, (long) end);
+        }
+
+        @JavascriptInterface
+        public void cancel() {
+            AlarmScheduler.cancel(MainActivity.this);
+        }
+
+        /** Gibt true zurück, wenn der Wecker die App geöffnet hat (einmalig). */
+        @JavascriptInterface
+        public boolean consumeLaunch() {
+            boolean value = alarmLaunch;
+            alarmLaunch = false;
+            return value;
+        }
+
+        /** Geplante Zeiten: {"start":ms,"end":ms} oder {}. */
+        @JavascriptInterface
+        public String getPlan() {
+            return AlarmScheduler.planJson(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void requestNotifications() {
+            if (Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_REQUEST));
+            }
+        }
+
+        /** {"exactAlarm":b,"notifications":b,"fullScreen":b,"batteryFree":b,"mediaVolume":0-100} */
+        @JavascriptInterface
+        public String status() {
+            try {
+                AlarmManager alarms = getSystemService(AlarmManager.class);
+                NotificationManager notes = getSystemService(NotificationManager.class);
+                PowerManager power = getSystemService(PowerManager.class);
+                AudioManager audio = getSystemService(AudioManager.class);
+                boolean exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms();
+                boolean enabled = notes.areNotificationsEnabled();
+                boolean full = Build.VERSION.SDK_INT < 34 || notes.canUseFullScreenIntent();
+                boolean battery = power.isIgnoringBatteryOptimizations(getPackageName());
+                int max = Math.max(1, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+                int volume = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / max;
+                return "{\"exactAlarm\":" + exact + ",\"notifications\":" + enabled + ",\"fullScreen\":" + full
+                        + ",\"batteryFree\":" + battery + ",\"mediaVolume\":" + volume + "}";
+            } catch (RuntimeException e) {
+                return "{}";
+            }
+        }
+
+        /** Öffnet die passende Android-Einstellung: exact, fullscreen, notifications oder battery. */
+        @JavascriptInterface
+        public void openSettings(String kind) {
+            runOnUiThread(() -> {
+                Uri pkg = Uri.parse("package:" + getPackageName());
+                Intent intent;
+                switch (kind) {
+                    case "exact":
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+                        intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg);
+                        break;
+                    case "fullscreen":
+                        if (Build.VERSION.SDK_INT < 34) return;
+                        intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg);
+                        break;
+                    case "notifications":
+                        intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+                        break;
+                    default:
+                        intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                }
+                try {
+                    startActivity(intent);
+                } catch (ActivityNotFoundException ignored) {
+                }
+            });
         }
     }
 }

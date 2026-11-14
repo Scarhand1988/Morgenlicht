@@ -145,3 +145,22 @@ test('nextDelay: nachts höchstens bis zur nächsten Minute oder zum Lichtbeginn
   assert.equal(Z.nextDelay(later, 'night', now), 45030);
   assert.equal(Z.nextDelay({...later, preview: true}, 'sunrise', now), 100);
 });
+
+test('nextWake: eigene Zeit pro Wochentag', () => {
+  // Fr 22:00 gestellt, Samstag (6) soll um 08:30 klingeln, sonst 06:00
+  const times = {6: '08:30'};
+  assert.equal(Z.nextWake('06:00', [5, 6], FRIDAY_22, times), local(2026, 11, 14, 8, 30));
+  // Sonntag (0) hat keine eigene Zeit und nimmt die Standardzeit
+  assert.equal(Z.nextWake('06:00', [0], FRIDAY_22, times), local(2026, 11, 15, 6, 0));
+});
+
+test('nextWake: ungültige Tageszeit fällt auf die Standardzeit zurück', () => {
+  assert.equal(Z.nextWake('06:00', [6], FRIDAY_22, {6: 'xx'}), local(2026, 11, 14, 6, 0));
+  assert.equal(Z.nextWake('06:00', [6], FRIDAY_22, {6: ''}), local(2026, 11, 14, 6, 0));
+});
+
+test('plan: Lichtbeginn richtet sich nach der Zeit des Wochentags', () => {
+  const p = Z.plan({wake: '06:00', days: [6], lead: 30, sleep: 0, times: {6: '08:30'}}, FRIDAY_22);
+  assert.equal(p.end, local(2026, 11, 14, 8, 30));
+  assert.equal(p.start, local(2026, 11, 14, 8, 0));
+});
