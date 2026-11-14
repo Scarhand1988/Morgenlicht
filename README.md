@@ -34,7 +34,8 @@ In the browser the alarm only works while the page is open and the phone stays u
 | `android/` | Android app shell in Java (system alarm, calendar bridge) |
 | `tests/` | automatic tests: `npm test` |
 
-The APK is built on every change by `.github/workflows/android-apk.yml` and published under *Releases*.
+The APK is built on demand by `.github/workflows/android-apk.yml` (*Actions → Android-APK bauen → Run workflow*) and published under *Releases*. Every new APK has a new checksum that Google Play Protect has to learn again, so build only when a new version is really needed.
+/ Die APK wird nur auf Knopfdruck gebaut (*Actions → Android-APK bauen → Run workflow*) und unter *Releases* veröffentlicht. Jede neue APK hat eine neue Prüfsumme, die Play Protect erst wieder kennenlernen muss – deshalb nur bauen, wenn wirklich eine neue Version gebraucht wird.
 
 ## Android: signing key / Signaturschlüssel
 
