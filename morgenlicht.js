@@ -17,6 +17,8 @@ const vibrateEl = $('vibrate');
 const brightnessEl = $('brightness');
 const lightOnEl = $('lightOn');
 const clockOnEl = $('clockOn');
+const agendaOnEl = $('agendaOn');
+const calendar = window.MorgenlichtKalender || null; // nur in der Android-App vorhanden
 const brightnessOnEl = $('brightnessOn');
 const sceneSel = $('scene');
 const sleepSel = $('sleep');
@@ -70,6 +72,7 @@ try {
   if (typeof s.lightOn === 'boolean') lightOnEl.checked = s.lightOn;
   if (typeof s.brightnessOn === 'boolean') brightnessOnEl.checked = s.brightnessOn;
   if (typeof s.clockOn === 'boolean') clockOnEl.checked = s.clockOn;
+  if (typeof s.agendaOn === 'boolean') agendaOnEl.checked = s.agendaOn;
   if (typeof s.vibrate === 'boolean') vibrateEl.checked = s.vibrate;
   if (typeof s.sleepSound === 'boolean') sleepSoundEl.checked = s.sleepSound;
 } catch {}
@@ -77,7 +80,7 @@ try {
 function save() {
   try {
     localStorage.setItem(SET_KEY, JSON.stringify({
-      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, clockOn:clockOnEl.checked, brightnessOn:brightnessOnEl.checked,
+      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, clockOn:clockOnEl.checked, agendaOn:agendaOnEl.checked, brightnessOn:brightnessOnEl.checked,
       snooze:snoozeSel.value, sleep:sleepSel.value, scene:sceneSel.value,
       vibrate:vibrateEl.checked, sleepSound:sleepSoundEl.checked
     }));
@@ -608,6 +611,7 @@ function finish(reason) {
       text += ' Nächster Termin: ' + Z.dayWord(next, now, false) + ' um ' + fmtTime.format(next) + ' – stell den Wecker abends wieder.';
     }
     status.textContent = text;
+    showAgenda();
   }
   updateOverview();
   run.trigger?.focus();
@@ -783,6 +787,33 @@ sleepSel.addEventListener('change', () => { save(); updateOverview(); });
 brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
 [lightOnEl, brightnessOnEl].forEach(el => el.addEventListener('change', () => { save(); updateOverview(); }));
 clockOnEl.addEventListener('change', () => { save(); applyClock(); });
+$('agendaRow').hidden = !calendar;
+agendaOnEl.addEventListener('change', () => {
+  save();
+  if (agendaOnEl.checked && calendar) { try { calendar.requestPermission(); } catch {} }
+});
+/** Nach dem Aufstehen: kurzer Überblick über die Termine von heute (nur in der Android-App) */
+function showAgenda() {
+  if (!calendar || !agendaOnEl.checked) return;
+  let data;
+  try { data = JSON.parse(calendar.getToday()); } catch { return; }
+  if (!data.granted) return;
+  const list = $('agendaList');
+  list.textContent = '';
+  const add = (when, title, cls) => {
+    const li = document.createElement('li');
+    if (cls) li.className = cls;
+    if (when) { const w = document.createElement('span'); w.className = 'when'; w.textContent = when; li.append(w); }
+    const t = document.createElement('span'); t.textContent = title; li.append(t);
+    list.append(li);
+  };
+  if (!data.events.length) add('', 'Heute stehen keine Termine an.', 'none');
+  data.events.forEach(e => add(e.allDay ? 'ganztägig' : fmtTime.format(e.begin), e.title));
+  setText('agendaTitle', Z.greeting(Date.now()));
+  $('agendaDlg').showModal();
+}
+$('agendaClose').addEventListener('click', () => $('agendaDlg').close());
+$('agendaDlg').addEventListener('click', event => { if (event.target === $('agendaDlg')) $('agendaDlg').close(); });
 volumeEl.addEventListener('input', () => {
   updateOverview();
   save();

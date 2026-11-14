@@ -104,6 +104,10 @@
       <label class="row-label" for="scene"><span>Sonnenaufgang</span><span class="hint">„Fläche“ gibt das meiste Licht</span></label>
       <select id="scene"><option value="flat" selected>Fläche</option><option value="sun">Mit Sonne</option></select>
     </div>
+    <div class="setting" id="agendaRow" hidden>
+      <label class="row-label" for="agendaOn"><span>Termine am Morgen</span><span class="hint">Nach „Aufstehen“ zeigt die App kurz, was heute im Kalender steht. Die Termine bleiben auf dem Handy.</span></label>
+      <input type="checkbox" id="agendaOn">
+    </div>
     <div class="setting">
       <label class="row-label" for="clockOn"><span>Uhrzeit in der Nachtansicht</span><span class="hint">Aus: Der Bildschirm bleibt nachts ganz dunkel, nur der Wecker-Hinweis bleibt</span></label>
       <input type="checkbox" id="clockOn" checked>
@@ -173,6 +177,15 @@
   <div class="dialog-actions" style="margin-top:16px">
     <button type="button" class="secondary" id="timeCancel">Abbrechen</button>
     <button type="button" class="primary" id="timeOk">Übernehmen</button>
+  </div>
+</dialog>
+
+<dialog id="agendaDlg" aria-labelledby="agendaTitle">
+  <h2 id="agendaTitle"></h2>
+  <p class="agenda-sub">Das steht heute für dich an</p>
+  <ul class="agenda-list" id="agendaList"></ul>
+  <div class="dialog-actions">
+    <button type="button" class="primary" id="agendaClose">Schließen</button>
   </div>
 </dialog>
 

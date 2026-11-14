@@ -1,15 +1,21 @@
 package de.scarhand.morgenlicht;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ContentUris;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
+import android.provider.CalendarContract;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -24,7 +30,12 @@ import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.TimeZone;
 
 /**
  * App-Hülle für die Morgenlicht-Web-App. Die Web-Dateien liegen in der APK (assets/www)
@@ -36,6 +47,7 @@ public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START = "https://" + HOST + "/assets/www/Morgenlicht.html";
     private static final int FILE_REQUEST = 1;
+    private static final int CALENDAR_REQUEST = 2;
 
     /**
      * Die App läuft im Vollbild und hält das Display selbst wach (FLAG_KEEP_SCREEN_ON).
@@ -126,6 +138,8 @@ public class MainActivity extends Activity {
             WebViewCompat.addDocumentStartJavaScript(web, APP_BRIDGE, Collections.singleton("https://" + HOST));
         }
 
+        web.addJavascriptInterface(new CalendarBridge(), "MorgenlichtKalender");
+
         hideSystemBars();
 
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) {
@@ -198,6 +212,88 @@ public class MainActivity extends Activity {
                             | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        }
+    }
+
+    /**
+     * Schnittstelle für die Seite: liest die Termine von heute aus dem Handy-Kalender.
+     * Nichts davon verlässt das Gerät. Ohne Erlaubnis liefert sie eine leere Liste.
+     */
+    private class CalendarBridge {
+        @JavascriptInterface
+        public boolean hasPermission() {
+            return checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public void requestPermission() {
+            if (hasPermission()) return;
+            runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, CALENDAR_REQUEST));
+        }
+
+        /** JSON: {"granted":true,"events":[{"title":"..","begin":ms,"end":ms,"allDay":false}]} */
+        @JavascriptInterface
+        public String getToday() {
+            JSONObject result = new JSONObject();
+            JSONArray events = new JSONArray();
+            try {
+                boolean granted = hasPermission();
+                result.put("granted", granted);
+                if (granted) readToday(events);
+                result.put("events", events);
+            } catch (Exception e) {
+                try {
+                    result.put("granted", false);
+                    result.put("events", events);
+                } catch (Exception ignored) {
+                }
+            }
+            return result.toString();
+        }
+
+        private void readToday(JSONArray out) throws Exception {
+            Calendar day = Calendar.getInstance();
+            int year = day.get(Calendar.YEAR), month = day.get(Calendar.MONTH), date = day.get(Calendar.DAY_OF_MONTH);
+            day.set(year, month, date, 0, 0, 0);
+            day.set(Calendar.MILLISECOND, 0);
+            long from = day.getTimeInMillis();
+            day.add(Calendar.DAY_OF_MONTH, 1);
+            long to = day.getTimeInMillis();
+
+            // Ganztägige Termine liegen in UTC: ihr Tag wird über das UTC-Datum bestimmt
+            Calendar utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            utc.clear();
+            utc.set(year, month, date);
+            long todayUtc = utc.getTimeInMillis();
+
+            Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
+            ContentUris.appendId(builder, from - 24L * 3600000L);
+            ContentUris.appendId(builder, to + 24L * 3600000L);
+            String[] columns = {
+                    CalendarContract.Instances.TITLE,
+                    CalendarContract.Instances.BEGIN,
+                    CalendarContract.Instances.END,
+                    CalendarContract.Instances.ALL_DAY,
+                    CalendarContract.Instances.SELF_ATTENDEE_STATUS
+            };
+            try (Cursor c = getContentResolver().query(builder.build(), columns, null, null,
+                    CalendarContract.Instances.ALL_DAY + " DESC, " + CalendarContract.Instances.BEGIN + " ASC")) {
+                if (c == null) return;
+                while (c.moveToNext() && out.length() < 20) {
+                    long begin = c.getLong(1), end = c.getLong(2);
+                    boolean allDay = c.getInt(3) == 1;
+                    if (c.getInt(4) == CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED) continue;
+                    boolean today = allDay ? (begin <= todayUtc && todayUtc < end) : (begin < to && end > from);
+                    if (!today) continue;
+                    String title = c.getString(0);
+                    JSONObject event = new JSONObject();
+                    event.put("title", title == null || title.trim().isEmpty() ? "(ohne Titel)" : title);
+                    event.put("begin", begin);
+                    event.put("end", end);
+                    event.put("allDay", allDay);
+                    out.put(event);
+                }
+            }
         }
     }
 }

@@ -177,3 +177,10 @@ dialog#flashDlg::backdrop{background:#000}
 dialog#flashDlg p{font-size:16px;text-align:center;padding:24px;max-width:340px}
 
 .keep-awake{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:6}
+
+dialog#agendaDlg h2{font-size:26px;font-weight:600;color:var(--text)}
+dialog#agendaDlg .agenda-sub{margin-top:4px;color:var(--muted)}
+.agenda-list{list-style:none;margin:16px 0 4px;padding:0;display:grid;gap:10px;max-height:50vh;overflow:auto}
+.agenda-list li{display:grid;grid-template-columns:5.5em 1fr;gap:10px;font-size:17px}
+.agenda-list .when{color:var(--muted);font-variant-numeric:tabular-nums}
+.agenda-list li.none{display:block;color:var(--muted)}
