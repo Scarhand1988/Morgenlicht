@@ -30,7 +30,7 @@ jobs:
           WWW=android/app/src/main/assets/www
           rm -rf "$WWW"
           mkdir -p "$WWW/sounds"
-          cp Morgenlicht.html morgenlicht.css morgenlicht.js morgenlicht-zeit.js morgenlicht-klang.js \
+          cp Morgenlicht.html morgenlicht.css morgenlicht.js morgenlicht-zeit.js morgenlicht-klang.js morgenlicht-i18n.js \
              morgenlicht-sw.js morgenlicht.webmanifest morgenlicht-icon.svg \
              morgenlicht-180.png morgenlicht-192.png morgenlicht-512.png "$WWW/"
           cp sounds/*.wav sounds/QUELLEN.md "$WWW/sounds/"
@@ -70,9 +70,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMMER: ${{ github.run_number }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk Morgenlicht.apk
-          gh release create "apk-1.0.$NUMMER" Morgenlicht.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk SunriseClock.apk
+          gh release create "apk-1.0.$NUMMER" SunriseClock.apk \
             --target "$GITHUB_SHA" \
-            --title "Morgenlicht 1.0.$NUMMER (Android)" \
+            --title "Sunrise Clock 1.0.$NUMMER (Android)" \
             --latest \
-            --notes "Android-App-Hülle für Morgenlicht. Auf dem Handy Morgenlicht.apk herunterladen und öffnen; beim ersten Mal die Installation aus dieser Quelle erlauben. Der Wecker klingelt nur, solange die App geöffnet ist (Ladekabel anschließen)."
+            --notes "Sunrise Clock for Android. Download SunriseClock.apk on your phone and open it; allow installation from this source the first time. Sunrise Clock für Android: SunriseClock.apk auf dem Handy herunterladen und öffnen, beim ersten Mal die Installation aus dieser Quelle erlauben."

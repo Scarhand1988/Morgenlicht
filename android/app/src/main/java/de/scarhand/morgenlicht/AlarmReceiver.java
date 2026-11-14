@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
 
+import java.util.Locale;
+
 /**
  * Kommt zum Lichtbeginn und zur Weckzeit an. Öffnet die App über dem Sperrbildschirm
  * (Vollbild-Benachrichtigung); die Seite startet dann Licht und Ton von selbst.
@@ -30,8 +32,9 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager == null) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL, "Wecker", NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription("Startet Sonnenaufgang und Weckton");
+        boolean german = "de".equals(Locale.getDefault().getLanguage());
+        NotificationChannel channel = new NotificationChannel(CHANNEL, german ? "Wecker" : "Alarm", NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription(german ? "Startet Sonnenaufgang und Weckton" : "Starts the sunrise and the alarm sound");
         channel.setSound(null, null);
         channel.enableVibration(false);
         channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
@@ -45,8 +48,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         Notification notification = new Notification.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle("Morgenlicht")
-                .setContentText("ring".equals(phase) ? "Zeit aufzuwachen" : "Der Sonnenaufgang beginnt")
+                .setContentTitle("Sunrise Clock")
+                .setContentText("ring".equals(phase)
+                        ? (german ? "Zeit aufzuwachen" : "Time to wake up")
+                        : (german ? "Der Sonnenaufgang beginnt" : "The sunrise is starting"))
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)

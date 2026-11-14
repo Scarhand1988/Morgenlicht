@@ -164,3 +164,16 @@ test('plan: Lichtbeginn richtet sich nach der Zeit des Wochentags', () => {
   assert.equal(p.end, local(2026, 11, 14, 8, 30));
   assert.equal(p.start, local(2026, 11, 14, 8, 0));
 });
+
+test('Sprache: Englisch für Tageswörter, Dauer und Gruß (danach wieder Deutsch)', () => {
+  Z.setLanguage('en');
+  try {
+    assert.equal(Z.dayWord(FRIDAY_22, FRIDAY_22, true), 'Today');
+    assert.equal(Z.fmtIn(90 * MIN), '1 h 30 min');
+    assert.equal(Z.daysSummary([1, 2, 3, 4, 5]), 'Mon–Fri');
+    assert.equal(Z.daysSummary([]), 'Once');
+    assert.equal(Z.greeting(local(2026, 11, 14, 8, 0)), 'Good morning');
+  } finally { Z.setLanguage('de'); }
+  assert.equal(Z.fmtIn(90 * MIN), '1 Std. 30 Min.');
+  assert.equal(Z.greeting(local(2026, 11, 14, 8, 0)), 'Guten Morgen');
+});

@@ -8,16 +8,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Morgenlicht">
+<meta name="apple-mobile-web-app-title" content="Sunrise Clock">
 <link rel="manifest" href="morgenlicht.webmanifest">
 <link rel="icon" href="morgenlicht-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="morgenlicht-180.png">
 <link rel="stylesheet" href="morgenlicht.css">
-<title>Morgenlicht</title>
+<title>Sunrise Clock</title>
 </head>
 <body>
 <main id="settings">
-  <header class="top"><h1>Morgenlicht</h1><p>Sanft aufwachen mit Licht und Naturtönen.</p></header>
+  <header class="top"><h1>Sunrise Clock</h1><p>Sanft aufwachen mit Licht und Naturtönen.</p></header>
 
   <div class="banner" id="resume" hidden role="region" aria-label="Gestellter Wecker">
     <p id="resumeText"></p>
@@ -103,6 +103,10 @@
 
   <details class="panel more">
     <summary>Weitere Einstellungen</summary>
+    <div class="setting">
+      <label for="language">Sprache / Language</label>
+      <select id="language"><option value="auto">Auto</option><option value="de">Deutsch</option><option value="en">English</option></select>
+    </div>
     <h3 class="group">Licht</h3>
     <div class="setting">
       <label class="row-label" for="scene"><span>Sonnenaufgang</span><span class="hint">„Fläche“ gibt das meiste Licht</span></label>
@@ -166,7 +170,7 @@
     <p class="status" id="status" role="status"></p>
     <div class="install" id="install" hidden>
       <button type="button" class="secondary" id="installBtn" hidden>Als App installieren</button>
-      <p class="hint" id="iosHint" hidden>Tipp: Über Teilen → „Zum Home-Bildschirm“ läuft Morgenlicht ohne Adressleiste.</p>
+      <p class="hint" id="iosHint" hidden>Tipp: Über Teilen → „Zum Home-Bildschirm“ läuft Sunrise Clock ohne Adressleiste.</p>
     </div>
   </div>
 </main>
@@ -223,7 +227,7 @@
   </div>
 </dialog>
 
-<section class="stage" id="stage" hidden aria-label="Morgenlicht-Wecker" tabindex="-1">
+<section class="stage" id="stage" hidden aria-label="Sunrise Clock Wecker" tabindex="-1">
   <p class="sr-only" id="phase" role="status"></p>
   <div class="night" id="night">
     <p class="night-time" id="nightTime"></p>
@@ -243,6 +247,7 @@
   <button type="button" class="stop hold" id="stop"><span id="stopLabel">Wecker ausschalten</span><small>gedrückt halten</small></button>
 </section>
 
+<script src="morgenlicht-i18n.js"></script>
 <script src="morgenlicht-zeit.js"></script>
 <script src="morgenlicht-klang.js"></script>
 <script src="morgenlicht.js"></script>

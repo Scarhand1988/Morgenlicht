@@ -1,6 +1,9 @@
-/* Morgenlicht – Bedienung und Weckablauf */
+/* Sunrise Clock – Bedienung und Weckablauf */
 'use strict';
 const Z = window.MorgenlichtZeit;
+const LANG = window.MorgenlichtSprache;
+const t = LANG.t;
+Z.setLanguage(LANG.lang);
 const K = window.MorgenlichtKlang;
 const $ = id => document.getElementById(id);
 
@@ -32,8 +35,8 @@ const flashDlg = $('flashDlg');
 const diagDlg = $('diagDlg');
 const soundButtons = [...document.querySelectorAll('[data-sound]')];
 const dayButtons = [...document.querySelectorAll('[data-day]')];
-const fmtTime = new Intl.DateTimeFormat('de-DE', {hour:'2-digit', minute:'2-digit'});
-const fmtDate = new Intl.DateTimeFormat('de-DE', {weekday:'long', day:'numeric', month:'long'});
+const fmtTime = new Intl.DateTimeFormat(LANG.locale, {hour:'2-digit', minute:'2-digit'});
+const fmtDate = new Intl.DateTimeFormat(LANG.locale, {weekday:'long', day:'numeric', month:'long'});
 const canVibrate = typeof navigator.vibrate === 'function';
 const canWakeLock = 'wakeLock' in navigator;
 const SET_KEY = 'morgenlicht';
@@ -110,26 +113,26 @@ function updateOverview() {
   const now = Date.now();
   const p = Z.plan(settingsNow(), now);
   setText('clockText', wake.value);
-  clockBtn.setAttribute('aria-label', 'Weckzeit ' + wake.value + ', ändern');
+  clockBtn.setAttribute('aria-label', t('Weckzeit ') + wake.value + t(', ändern'));
   $('leadRow').hidden = !lightOnEl.checked;
   $('lightOffHint').hidden = lightOnEl.checked;
   duration.hidden = !lightOnEl.checked;
   $('brightnessBox').hidden = !brightnessOnEl.checked;
-  setText('lightStart', !lightOnEl.checked ? 'Ohne Licht' : p.shortened ? 'Licht startet sofort' : 'Licht ab ' + fmtTime.format(p.start));
-  setText('lightRing', 'klingelt ' + Z.dayWord(p.end, now, false) + ' in ' + Z.fmtIn(p.end - now));
-  setText('leadHint', p.shortened ? 'Start sofort (zu wenig Zeit)' : 'Start ' + fmtTime.format(p.start));
+  setText('lightStart', !lightOnEl.checked ? t('Ohne Licht') : p.shortened ? t('Licht startet sofort') : t('Licht ab ') + fmtTime.format(p.start));
+  setText('lightRing', t('klingelt ') + Z.dayWord(p.end, now, false) + ' in ' + Z.fmtIn(p.end - now));
+  setText('leadHint', p.shortened ? t('Start sofort (zu wenig Zeit)') : t('Start ') + fmtTime.format(p.start));
   setText('daysSummary', Z.daysSummary(days));
   setText('volumeOut', volumeEl.value + ' %');
   setText('brightnessOut', brightnessEl.value + ' %');
-  setText('durationOut', duration.value + ' Min.');
-  setText('sleepOnly', 'Nur Einschlaflicht · ' + sleepOnlyMinutes() + ' Min.');
+  setText('durationOut', duration.value + t(' Min.'));
+  setText('sleepOnly', t('Nur Einschlaflicht · ') + sleepOnlyMinutes() + t(' Min.'));
   [duration, volumeEl, brightnessEl].forEach(setFill);
 }
 function updateSelection() {
   soundButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sound === selected)));
   dayButtons.forEach(button => button.setAttribute('aria-pressed', String(days.includes(Number(button.dataset.day)))));
   $('customRow').hidden = !(selected === 'custom' && customInfo);
-  if (customInfo) setText('customName', 'Eigener Ton: ' + customInfo.name);
+  if (customInfo) setText('customName', t('Eigener Ton: ') + customInfo.name);
 }
 
 /* ---------- Drehräder für die Weckzeit ---------- */
@@ -178,8 +181,8 @@ function makeWheel(el, count, pageStep, unit) {
     set(v) { value = v; mark(); scrollToValue(false); }
   };
 }
-const hourWheel = makeWheel($('wheelH'), 24, 6, 'Uhr');
-const minuteWheel = makeWheel($('wheelM'), 60, 5, 'Minuten');
+const hourWheel = makeWheel($('wheelH'), 24, 6, t('Uhr'));
+const minuteWheel = makeWheel($('wheelM'), 60, 5, t('Minuten'));
 function openTimePicker() {
   const [h, m] = Z.parseTime(wake.value);
   timeDlg.showModal();
@@ -320,7 +323,7 @@ function startPlayback(mode, opts = {}) {
 }
 function stopSound() {
   clearTimeout(sampleTimer);
-  listen.textContent = 'Ton anhören';
+  listen.textContent = t('Ton anhören');
   if (!playback) return;
   playback.timers.forEach(id => { clearTimeout(id); clearInterval(id); });
   playback.voice.stop();
@@ -376,11 +379,11 @@ function paintScene(progress) {
 
 /* ---------- Ablauf ---------- */
 function phaseLabel(phase, run) {
-  if (phase === 'sunset') return 'Einschlaflicht';
-  if (phase === 'night') return 'Wecker aktiv · Licht ab ' + fmtTime.format(run.start);
-  if (phase === 'sunrise') return 'Sonnenaufgang';
-  if (phase === 'snooze') return 'Schlummern bis ' + fmtTime.format(run.snoozeUntil);
-  return 'Zeit aufzuwachen';
+  if (phase === 'sunset') return t('Einschlaflicht');
+  if (phase === 'night') return t('Wecker aktiv · Licht ab ') + fmtTime.format(run.start);
+  if (phase === 'sunrise') return t('Sonnenaufgang');
+  if (phase === 'snooze') return t('Schlummern bis ') + fmtTime.format(run.snoozeUntil);
+  return t('Zeit aufzuwachen');
 }
 function enterPhase(run, phase, now) {
   const previous = run.phase;
@@ -424,12 +427,12 @@ function updateGuard() {
   const run = currentRun;
   if (!run) return;
   const ok = [], warn = [];
-  if (screenLock && !screenLock.released) ok.push('Display bleibt an');
-  else if (screenFallback) warn.push('Display nur im Ersatzmodus wach');
-  else if (!canWakeLock) warn.push('Display-Sperre nicht unterstützt – Bildschirm kann ausgehen');
-  else warn.push('Display bleibt nicht sicher an');
-  if (battery) battery.charging ? ok.push('lädt') : warn.push('nicht am Ladekabel');
-  if (run.wasHidden) warn.push('Seite war im Hintergrund');
+  if (screenLock && !screenLock.released) ok.push(t('Display bleibt an'));
+  else if (screenFallback) warn.push(t('Display nur im Ersatzmodus wach'));
+  else if (!canWakeLock) warn.push(t('Display-Sperre nicht unterstützt – Bildschirm kann ausgehen'));
+  else warn.push(t('Display bleibt nicht sicher an'));
+  if (battery) battery.charging ? ok.push(t('lädt')) : warn.push(t('nicht am Ladekabel'));
+  if (run.wasHidden) warn.push(t('Seite war im Hintergrund'));
   setText('guard', [...warn.map(w => '⚠ ' + w), ...ok].join(' · '));
   $('guard').classList.toggle('warn', warn.length > 0);
 }
@@ -437,7 +440,7 @@ function updateTexts(run, phase, now) {
   const time = fmtTime.format(now);
   if (phase === 'night') {
     setText('nightTime', time);
-    setText('nightInfo', 'Wecker ' + Z.dayWord(run.end, now, false) + ' um ' + fmtTime.format(run.end) + ' · Licht ab ' + fmtTime.format(run.start));
+    setText('nightInfo', t('Wecker ') + Z.dayWord(run.end, now, false) + t(' um ') + fmtTime.format(run.end) + t(' · Licht ab ') + fmtTime.format(run.start));
     updateGuard();
     const minute = Math.floor(now / 60000);
     if (run.shiftMinute !== minute) {
@@ -456,8 +459,8 @@ function updateTexts(run, phase, now) {
     setText('ringDate', fmtDate.format(now));
     $('snoozeBtn').hidden = phase === 'snooze';
     $('snoozeInfo').hidden = phase !== 'snooze';
-    if (phase === 'snooze') setText('snoozeInfo', run.preview ? 'Klingelt gleich wieder' : 'Klingelt wieder um ' + fmtTime.format(run.snoozeUntil));
-    setText('snoozeBtn', run.preview ? 'Schlummern · 5 Sek.' : 'Schlummern · ' + run.snoozeMs / 60000 + ' Min.');
+    if (phase === 'snooze') setText('snoozeInfo', run.preview ? t('Klingelt gleich wieder') : t('Klingelt wieder um ') + fmtTime.format(run.snoozeUntil));
+    setText('snoozeBtn', run.preview ? t('Schlummern · 5 Sek.') : t('Schlummern · ') + run.snoozeMs / 60000 + t(' Min.'));
   }
 }
 function render() {
@@ -633,15 +636,15 @@ function finish(reason) {
   updateAudioHint();
   if (!run.preview && !run.sleepOnly) { clearRun(); planNextAlarm(reason); }
   const now = Date.now();
-  if (run.preview) status.textContent = 'Test beendet.';
-  else if (run.sleepOnly) status.textContent = reason === 'sleepdone' ? 'Einschlaflicht beendet. Gute Nacht!' : 'Einschlaflicht ausgeschaltet.';
-  else if (reason === 'timeout') status.textContent = 'Der Wecker hat ' + (AUTO_SNOOZE_MAX + 1) + '-mal ohne Reaktion geklingelt und wurde beendet.';
-  else if (reason === 'off') status.textContent = 'Wecker ausgeschaltet.';
+  if (run.preview) status.textContent = t('Test beendet.');
+  else if (run.sleepOnly) status.textContent = reason === 'sleepdone' ? t('Einschlaflicht beendet. Gute Nacht!') : t('Einschlaflicht ausgeschaltet.');
+  else if (reason === 'timeout') status.textContent = t('Der Wecker hat ') + (AUTO_SNOOZE_MAX + 1) + t('-mal ohne Reaktion geklingelt und wurde beendet.');
+  else if (reason === 'off') status.textContent = t('Wecker ausgeschaltet.');
   else if (reason === 'awake') {
-    let text = Z.greeting(now) + '! Wecker beendet.';
+    let text = Z.greeting(now) + t('! Wecker beendet.');
     if (days.length) {
       const next = Z.nextWake(wake.value, days, now, dayTimes);
-      text += ' Nächster Termin: ' + Z.dayWord(next, now, false) + ' um ' + fmtTime.format(next) + ' – stell den Wecker abends wieder.';
+      text += t(' Nächster Termin: ') + Z.dayWord(next, now, false) + t(' um ') + fmtTime.format(next) + t(' – stell den Wecker abends wieder.');
     }
     status.textContent = text;
     showAgenda();
@@ -671,8 +674,8 @@ async function start(opts, trigger) {
     closeStage();
     void fullscreen?.then(() => { if (!currentRun) exitFullscreen(); });
     status.textContent = error.message === 'custom'
-      ? 'Der eigene Ton ließ sich nicht laden. Wähle die Datei erneut oder einen anderen Ton.'
-      : 'Ton konnte nicht gestartet werden. Prüfe die Audiofreigabe im Browser.';
+      ? t('Der eigene Ton ließ sich nicht laden. Wähle die Datei erneut oder einen anderen Ton.')
+      : t('Ton konnte nicht gestartet werden. Prüfe die Audiofreigabe im Browser.');
     trigger?.focus();
     return;
   }
@@ -692,7 +695,7 @@ async function start(opts, trigger) {
     snoozeMs:opts.preview ? 5000 : Number(snoozeSel.value) * 60000
   };
   $('resume').hidden = true;
-  setText('stopLabel', opts.preview ? 'Test beenden' : opts.sleepOnly ? 'Licht ausschalten' : 'Wecker ausschalten');
+  setText('stopLabel', opts.preview ? t('Test beenden') : opts.sleepOnly ? t('Licht ausschalten') : t('Wecker ausschalten'));
   if (!simple) saveRun();
   if (!simple && alarmNative) { try { alarmNative.schedule(currentRun.start, currentRun.end); } catch {} }
   render();
@@ -704,21 +707,21 @@ async function start(opts, trigger) {
 /* ---------- Bestätigung vor dem Scharfschalten ---------- */
 function fillChecklist() {
   const items = [];
-  const charge = 'Ladekabel anschließen – das Display bleibt die ganze Nacht an.';
-  items.push(battery ? (battery.charging ? ['ok', 'Ladekabel ist angeschlossen.'] : ['warn', charge]) : ['', charge]);
+  const charge = t('Ladekabel anschließen – das Display bleibt die ganze Nacht an.');
+  items.push(battery ? (battery.charging ? ['ok', t('Ladekabel ist angeschlossen.')] : ['warn', charge]) : ['', charge]);
   if (alarmNative) {
-    items.push(['ok', 'Der Wecker wird beim System angemeldet und startet Licht und Ton auch bei gesperrtem Handy.']);
+    items.push(['ok', t('Der Wecker wird beim System angemeldet und startet Licht und Ton auch bei gesperrtem Handy.')]);
     items.push(...systemWarnings());
-    items.push(['', 'Displayhelligkeit hochstellen. Die App kann sie nicht selbst regeln – das Licht wird nur so hell wie dein Display.']);
+    items.push(['', t('Displayhelligkeit hochstellen. Die App kann sie nicht selbst regeln – das Licht wird nur so hell wie dein Display.')]);
     fillList($('checklist'), items);
     return;
   }
   items.push(canWakeLock
-    ? ['ok', 'Dieser Browser kann das Display wach halten.']
-    : ['warn', 'Dieser Browser kann das Display nicht sicher wach halten. Stell die automatische Bildschirmsperre in den Handy-Einstellungen ab.']);
-  items.push(['', 'Displayhelligkeit hochstellen. Die App kann sie nicht selbst regeln – das Licht wird nur so hell wie dein Display.']);
-  items.push(['', 'Lautlos aus und Medienlautstärke prüfen. Der Weckton läuft über die Medienlautstärke.']);
-  items.push(['', 'Seite geöffnet lassen: Handy nicht sperren und nicht in eine andere App wechseln.']);
+    ? ['ok', t('Dieser Browser kann das Display wach halten.')]
+    : ['warn', t('Dieser Browser kann das Display nicht sicher wach halten. Stell die automatische Bildschirmsperre in den Handy-Einstellungen ab.')]);
+  items.push(['', t('Displayhelligkeit hochstellen. Die App kann sie nicht selbst regeln – das Licht wird nur so hell wie dein Display.')]);
+  items.push(['', t('Lautlos aus und Medienlautstärke prüfen. Der Weckton läuft über die Medienlautstärke.')]);
+  items.push(['', t('Seite geöffnet lassen: Handy nicht sperren und nicht in eine andere App wechseln.')]);
   fillList($('checklist'), items);
 }
 /** Android-App: Freigaben des Systems prüfen, die für einen zuverlässigen Wecker nötig sind */
@@ -726,12 +729,12 @@ function systemWarnings() {
   let s = {};
   try { s = JSON.parse(alarmNative.status()); } catch {}
   const rows = [];
-  if (s.exactAlarm === false) rows.push(['warn', 'Exakte Alarme sind nicht erlaubt – der Sonnenaufgang startet evtl. zu spät.', 'exact']);
-  if (s.notifications === false) rows.push(['warn', 'Benachrichtigungen sind aus – ohne sie kann der Wecker die App nicht öffnen.', 'notifications']);
-  if (s.fullScreen === false) rows.push(['warn', 'Vollbild-Benachrichtigungen sind nicht erlaubt – bei gesperrtem Handy öffnet sich die App nicht von selbst.', 'fullscreen']);
-  if (Number.isFinite(s.mediaVolume) && s.mediaVolume < 20) rows.push(['warn', 'Die Medienlautstärke ist sehr niedrig (' + s.mediaVolume + ' %). Der Weckton läuft darüber.']);
-  if (s.batteryFree === false) rows.push(['', 'Tipp: Nimm Morgenlicht von der Akku-Optimierung aus, damit Android den Wecker nicht verzögert.', 'battery']);
-  if (!rows.length && Object.keys(s).length) rows.push(['ok', 'Alle nötigen Freigaben sind erteilt.']);
+  if (s.exactAlarm === false) rows.push(['warn', t('Exakte Alarme sind nicht erlaubt – der Sonnenaufgang startet evtl. zu spät.'), 'exact']);
+  if (s.notifications === false) rows.push(['warn', t('Benachrichtigungen sind aus – ohne sie kann der Wecker die App nicht öffnen.'), 'notifications']);
+  if (s.fullScreen === false) rows.push(['warn', t('Vollbild-Benachrichtigungen sind nicht erlaubt – bei gesperrtem Handy öffnet sich die App nicht von selbst.'), 'fullscreen']);
+  if (Number.isFinite(s.mediaVolume) && s.mediaVolume < 20) rows.push(['warn', t('Die Medienlautstärke ist sehr niedrig (') + s.mediaVolume + t(' %). Der Weckton läuft darüber.')]);
+  if (s.batteryFree === false) rows.push(['', t('Tipp: Nimm Sunrise Clock von der Akku-Optimierung aus, damit Android den Wecker nicht verzögert.'), 'battery']);
+  if (!rows.length && Object.keys(s).length) rows.push(['ok', t('Alle nötigen Freigaben sind erteilt.')]);
   return rows;
 }
 function fillList(list, items) {
@@ -743,7 +746,7 @@ function fillList(list, items) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'link inline';
-      button.textContent = ' Öffnen';
+      button.textContent = t(' Öffnen');
       button.addEventListener('click', () => { try { alarmNative.openSettings(kind); } catch {} });
       li.append(button);
     }
@@ -754,13 +757,13 @@ function openConfirm() {
   if (currentRun || starting || !Z.parseTime(wake.value)) return;
   const now = Date.now(), p = Z.plan(settingsNow(), now);
   setText('confirmWhen', Z.dayWord(p.end, now, true) + ', ' + fmtTime.format(p.end));
-  setText('confirmIn', 'Licht ab ' + fmtTime.format(p.start) + ' · ' + Z.daysSummary(days));
+  setText('confirmIn', t('Licht ab ') + fmtTime.format(p.start) + ' · ' + Z.daysSummary(days));
   const sleepLine = $('confirmSleep');
-  sleepLine.replaceChildren('Schlafdauer bis zum Wecken: ', Object.assign(document.createElement('strong'), {textContent:Z.fmtIn(p.end - now)}));
+  sleepLine.replaceChildren(t('Schlafdauer bis zum Wecken: '), Object.assign(document.createElement('strong'), {textContent:Z.fmtIn(p.end - now)}));
   const notes = [];
-  if (p.shortened) notes.push('Bis zur Weckzeit ist weniger Zeit als der Lichtvorlauf – das Licht beginnt sofort und wird entsprechend schneller hell.');
-  if (p.sleepEnd) notes.push('Zuerst ' + Math.round((p.sleepEnd - p.sleepStart) / 60000) + ' Min. Einschlaflicht' + (sleepSoundEl.checked ? ' mit leisem Naturton' : '') + ', danach die dunkle Nachtanzeige.');
-  if (days.length) notes.push(alarmNative ? 'Der Wecker wiederholt sich automatisch an den gewählten Tagen.' : 'Im Browser musst du den Wecker trotz Wiederholung jeden Abend neu stellen.');
+  if (p.shortened) notes.push(t('Bis zur Weckzeit ist weniger Zeit als der Lichtvorlauf – das Licht beginnt sofort und wird entsprechend schneller hell.'));
+  if (p.sleepEnd) notes.push(t('Zuerst ') + Math.round((p.sleepEnd - p.sleepStart) / 60000) + t(' Min. Einschlaflicht') + (sleepSoundEl.checked ? t(' mit leisem Naturton') : '') + t(', danach die dunkle Nachtanzeige.'));
+  if (days.length) notes.push(alarmNative ? t('Der Wecker wiederholt sich automatisch an den gewählten Tagen.') : t('Im Browser musst du den Wecker trotz Wiederholung jeden Abend neu stellen.'));
   $('confirmNote').hidden = !notes.length;
   setText('confirmNote', notes.join(' '));
   fillChecklist();
@@ -778,42 +781,42 @@ function showFlash() {
 async function runDiagnostics() {
   const rows = [];
   const add = (cls, label, detail) => rows.push([cls, label + ': ' + detail]);
-  fillList($('diagList'), [['', 'Prüfung läuft …']]);
+  fillList($('diagList'), [['', t('Prüfung läuft …')]]);
   setText('diagNote', '');
   diagDlg.showModal();
-  add(window.isSecureContext ? 'ok' : 'warn', 'Sichere Verbindung (https)', window.isSecureContext ? 'ja' : 'nein – Installation, Offline-Betrieb und Display-Sperre brauchen https');
+  add(window.isSecureContext ? 'ok' : 'warn', t('Sichere Verbindung (https)'), window.isSecureContext ? t('ja') : t('nein – Installation, Offline-Betrieb und Display-Sperre brauchen https'));
   if (!canWakeLock) {
-    add('warn', 'Display wach halten', 'nicht unterstützt – der Ersatzmodus (stummes Video) wird versucht');
+    add('warn', t('Display wach halten'), t('nicht unterstützt – der Ersatzmodus (stummes Video) wird versucht'));
   } else {
-    try { const lock = await navigator.wakeLock.request('screen'); await lock.release(); add('ok', 'Display wach halten', 'funktioniert'); }
-    catch (error) { add('warn', 'Display wach halten', 'vom Browser abgelehnt (' + (error.name || 'Fehler') + ')'); }
+    try { const lock = await navigator.wakeLock.request('screen'); await lock.release(); add('ok', t('Display wach halten'), t('funktioniert')); }
+    catch (error) { add('warn', t('Display wach halten'), t('vom Browser abgelehnt (') + (error.name || t('Fehler')) + ')'); }
   }
-  try { await unlockAudio(); add('ok', 'Ton', 'freigegeben'); }
-  catch { add('warn', 'Ton', 'blockiert – Audiofreigabe im Browser prüfen'); }
+  try { await unlockAudio(); add('ok', t('Ton'), t('freigegeben')); }
+  catch { add('warn', t('Ton'), t('blockiert – Audiofreigabe im Browser prüfen')); }
   if (buffers) {
     await waitForRecordings();
     const loaded = Object.keys(buffers.recorded).length;
     const total = Object.keys(RECORDINGS).length;
-    add(loaded === total ? 'ok' : '', 'Naturaufnahmen', loaded === total ? 'alle ' + total + ' geladen' : loaded + ' von ' + total + ' geladen – fehlende werden durch erzeugte Klänge ersetzt');
+    add(loaded === total ? 'ok' : '', t('Naturaufnahmen'), loaded === total ? t('alle ') + total + t(' geladen') : loaded + t(' von ') + total + t(' geladen – fehlende werden durch erzeugte Klänge ersetzt'));
   }
-  if (canVibrate) { navigator.vibrate(200); add('ok', 'Vibration', 'unterstützt (kurzer Test lief gerade)'); }
-  else add('', 'Vibration', 'nicht unterstützt (auf iPhones normal)');
-  add(battery ? (battery.charging ? 'ok' : 'warn') : '', 'Ladezustand', battery ? (battery.charging ? 'lädt' : 'lädt nicht') : 'nicht abfragbar – Ladekabel selbst prüfen');
-  add(stage.requestFullscreen ? 'ok' : '', 'Vollbild', stage.requestFullscreen ? 'unterstützt' : 'nicht unterstützt – als App installieren');
+  if (canVibrate) { navigator.vibrate(200); add('ok', t('Vibration'), t('unterstützt (kurzer Test lief gerade)')); }
+  else add('', t('Vibration'), t('nicht unterstützt (auf iPhones normal)'));
+  add(battery ? (battery.charging ? 'ok' : 'warn') : '', t('Ladezustand'), battery ? (battery.charging ? t('lädt') : t('lädt nicht')) : t('nicht abfragbar – Ladekabel selbst prüfen'));
+  add(stage.requestFullscreen ? 'ok' : '', t('Vollbild'), stage.requestFullscreen ? t('unterstützt') : t('nicht unterstützt – als App installieren'));
   let stored = false;
   try { localStorage.setItem('morgenlicht-probe', '1'); stored = localStorage.getItem('morgenlicht-probe') === '1'; localStorage.removeItem('morgenlicht-probe'); } catch {}
-  add(stored ? 'ok' : 'warn', 'Einstellungen speichern', stored ? 'funktioniert' : 'nicht möglich (privates Fenster?) – Wecker übersteht kein Neuladen');
+  add(stored ? 'ok' : 'warn', t('Einstellungen speichern'), stored ? t('funktioniert') : t('nicht möglich (privates Fenster?) – Wecker übersteht kein Neuladen'));
   let fileStore = false;
   try { await dbSet('probe', 1); fileStore = (await dbGet('probe')) === 1; } catch {}
-  add(fileStore ? 'ok' : 'warn', 'Eigenen Ton speichern', fileStore ? 'funktioniert' : 'nicht möglich – eigener Ton gilt nur bis zum Neuladen');
+  add(fileStore ? 'ok' : 'warn', t('Eigenen Ton speichern'), fileStore ? t('funktioniert') : t('nicht möglich – eigener Ton gilt nur bis zum Neuladen'));
   const controlled = !!navigator.serviceWorker?.controller;
-  add(controlled ? 'ok' : '', 'Offline-Betrieb', controlled ? 'aktiv' : 'nicht aktiv (nur über https verfügbar)');
+  add(controlled ? 'ok' : '', t('Offline-Betrieb'), controlled ? t('aktiv') : t('nicht aktiv (nur über https verfügbar)'));
   if (alarmNative) systemWarnings().forEach(([cls, text]) => add(cls, 'System', text));
-  add(standalone ? 'ok' : '', 'Als App geöffnet', standalone ? 'ja' : 'nein – im Browser-Tab');
+  add(standalone ? 'ok' : '', t('Als App geöffnet'), standalone ? t('ja') : t('nein – im Browser-Tab'));
   fillList($('diagList'), rows);
-  diagText = 'Morgenlicht – Gerätecheck ' + new Date(Date.now()).toLocaleString('de-DE') + '\n' +
+  diagText = t('Sunrise Clock – Gerätecheck ') + new Date(Date.now()).toLocaleString(LANG.locale) + '\n' +
     'Browser: ' + navigator.userAgent + '\n' + rows.map(([cls, text]) => (cls === 'ok' ? '✓ ' : cls === 'warn' ? '! ' : '○ ') + text).join('\n');
-  setText('diagNote', 'Das Ergebnis bleibt auf deinem Gerät. „Ergebnis kopieren“ legt es für den Testplan in die Zwischenablage.');
+  setText('diagNote', t('Das Ergebnis bleibt auf deinem Gerät. „Ergebnis kopieren“ legt es für den Testplan in die Zwischenablage.'));
 }
 
 /* ---------- Druck-und-Halten-Knöpfe ---------- */
@@ -851,6 +854,9 @@ sleepSel.addEventListener('change', () => { save(); updateOverview(); });
 brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
 [lightOnEl, brightnessOnEl].forEach(el => el.addEventListener('change', () => { save(); updateOverview(); }));
 clockOnEl.addEventListener('change', () => { save(); applyClock(); });
+const languageEl = $('language');
+languageEl.value = LANG.choice;
+languageEl.addEventListener('change', () => { LANG.setChoice(languageEl.value); location.reload(); });
 $('agendaRow').hidden = !calendar;
 $('morningGroup').hidden = !calendar;
 agendaOnEl.addEventListener('change', () => {
@@ -872,8 +878,8 @@ function showAgenda() {
     const t = document.createElement('span'); t.textContent = title; li.append(t);
     list.append(li);
   };
-  if (!data.events.length) add('', 'Heute stehen keine Termine an.', 'none');
-  data.events.forEach(e => add(e.allDay ? 'ganztägig' : fmtTime.format(e.begin), e.title));
+  if (!data.events.length) add('', t('Heute stehen keine Termine an.'), 'none');
+  data.events.forEach(e => add(e.allDay ? t('ganztägig') : fmtTime.format(e.begin), e.title || t('(ohne Titel)')));
   setText('agendaTitle', Z.greeting(Date.now()));
   $('agendaDlg').showModal();
 }
@@ -912,12 +918,12 @@ customFile.addEventListener('change', async () => {
   const file = customFile.files[0];
   customFile.value = '';
   if (!file) return;
-  if (file.size > 20 * 1024 * 1024) { status.textContent = 'Die Datei ist größer als 20 MB. Bitte eine kürzere Aufnahme wählen.'; return; }
+  if (file.size > 20 * 1024 * 1024) { status.textContent = t('Die Datei ist größer als 20 MB. Bitte eine kürzere Aufnahme wählen.'); return; }
   try {
     ensureContext();
     customBuffer = K.prepareCustom(context, await decode(await file.arrayBuffer()));
   } catch {
-    status.textContent = 'Diese Datei lässt sich nicht als Ton abspielen.';
+    status.textContent = t('Diese Datei lässt sich nicht als Ton abspielen.');
     return;
   }
   customInfo = {name:file.name, blob:file};
@@ -925,8 +931,8 @@ customFile.addEventListener('change', async () => {
   selected = 'custom';
   updateSelection();
   save();
-  try { await dbSet('custom', customInfo); status.textContent = 'Eigener Ton übernommen und an die Lautstärke angeglichen.'; }
-  catch { status.textContent = 'Eigener Ton übernommen, aber nur bis zum Neuladen der Seite.'; }
+  try { await dbSet('custom', customInfo); status.textContent = t('Eigener Ton übernommen und an die Lautstärke angeglichen.'); }
+  catch { status.textContent = t('Eigener Ton übernommen, aber nur bis zum Neuladen der Seite.'); }
 });
 listen.addEventListener('click', async () => {
   if (playback) { stopSound(); return; }
@@ -937,10 +943,10 @@ listen.addEventListener('click', async () => {
     if (starting || currentRun || playback) return;
     status.textContent = '';
     startPlayback('sample');
-    listen.textContent = 'Hörprobe stoppen';
+    listen.textContent = t('Hörprobe stoppen');
     sampleTimer = setTimeout(stopSound, 15000);
   } catch (error) {
-    status.textContent = error.message === 'custom' ? 'Der eigene Ton ließ sich nicht laden.' : 'Ton konnte nicht gestartet werden.';
+    status.textContent = error.message === 'custom' ? t('Der eigene Ton ließ sich nicht laden.') : t('Ton konnte nicht gestartet werden.');
   }
 });
 $('arm').addEventListener('click', openConfirm);
@@ -958,8 +964,8 @@ $('sleepOnly').addEventListener('click', event => start({sleepOnly:true}, event.
 $('diagBtn').addEventListener('click', () => void runDiagnostics());
 $('diagClose').addEventListener('click', () => diagDlg.close());
 $('diagCopy').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(diagText); setText('diagNote', 'Ergebnis kopiert.'); }
-  catch { setText('diagNote', 'Kopieren nicht möglich – bitte den Text oben abschreiben oder ein Bildschirmfoto machen.'); }
+  try { await navigator.clipboard.writeText(diagText); setText('diagNote', t('Ergebnis kopiert.')); }
+  catch { setText('diagNote', t('Kopieren nicht möglich – bitte den Text oben abschreiben oder ein Bildschirmfoto machen.')); }
 });
 $('snoozeBtn').addEventListener('click', snooze);
 holdToConfirm($('awakeBtn'), 1200, () => finish('awake'), isAlarmRun);
@@ -998,11 +1004,11 @@ savedRun = loadSavedRun();
 if (alarmNative) { try { if (alarmNative.consumeLaunch()) window.morgenlichtAlarmLaunch(); } catch {} }
 if (savedRun && !currentRun && !starting && !alarmNative) {
   const now = Date.now();
-  const when = Z.dayWord(savedRun.end, now, false) + ' um ' + fmtTime.format(savedRun.end);
+  const when = Z.dayWord(savedRun.end, now, false) + t(' um ') + fmtTime.format(savedRun.end);
   setText('resumeText', savedRun.end > now
-    ? 'Dein Wecker für ' + when + ' ist noch gestellt. Nach dem Neuladen braucht er einen Tipp, damit Ton und Display wieder laufen.'
-    : 'Dein Wecker um ' + fmtTime.format(savedRun.end) + ' hätte schon geklingelt, während die Seite geschlossen war.');
-  setText('resumeGo', savedRun.end > now ? 'Fortsetzen' : 'Jetzt klingeln lassen');
+    ? t('Dein Wecker für ') + when + t(' ist noch gestellt. Nach dem Neuladen braucht er einen Tipp, damit Ton und Display wieder laufen.')
+    : t('Dein Wecker um ') + fmtTime.format(savedRun.end) + t(' hätte schon geklingelt, während die Seite geschlossen war.'));
+  setText('resumeGo', savedRun.end > now ? t('Fortsetzen') : t('Jetzt klingeln lassen'));
   $('resume').hidden = false;
 }
 

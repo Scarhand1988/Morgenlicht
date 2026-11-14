@@ -307,7 +307,7 @@ public class MainActivity extends Activity {
                     if (!today) continue;
                     String title = c.getString(0);
                     JSONObject event = new JSONObject();
-                    event.put("title", title == null || title.trim().isEmpty() ? "(ohne Titel)" : title);
+                    event.put("title", title == null ? "" : title.trim());
                     event.put("begin", begin);
                     event.put("end", end);
                     event.put("allDay", allDay);

@@ -7,7 +7,21 @@
   'use strict';
   const MINUTE = 60000;
   const DAY = 86400000;
-  const fmtWeekday = new Intl.DateTimeFormat('de-DE', {weekday: 'long'});
+  const TEXT = {
+    de: {today: 'heute', tomorrow: 'morgen', Today: 'Heute', Tomorrow: 'Morgen', day: ' Tag', days: ' Tagen', hour: ' Std.', min: ' Min.',
+      once: 'Einmalig', daily: 'Täglich', workdays: 'Mo–Fr', weekend: 'Wochenende', short: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+      morning: 'Guten Morgen', noon: 'Guten Tag', evening: 'Guten Abend', locale: 'de-DE'},
+    en: {today: 'today', tomorrow: 'tomorrow', Today: 'Today', Tomorrow: 'Tomorrow', day: ' day', days: ' days', hour: ' h', min: ' min',
+      once: 'Once', daily: 'Daily', workdays: 'Mon–Fri', weekend: 'Weekend', short: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      morning: 'Good morning', noon: 'Good afternoon', evening: 'Good evening', locale: 'en-GB'}
+  };
+  let tx = TEXT.de;
+  let fmtWeekday = new Intl.DateTimeFormat(tx.locale, {weekday: 'long'});
+  /** Sprache der Texte umschalten: 'de' (Standard) oder 'en' */
+  function setLanguage(lang) {
+    tx = TEXT[lang] || TEXT.de;
+    fmtWeekday = new Intl.DateTimeFormat(tx.locale, {weekday: 'long'});
+  }
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -55,8 +69,8 @@
 
   function dayWord(ms, now, capital) {
     const diff = dayOffset(ms, now);
-    if (diff === 0) return capital ? 'Heute' : 'heute';
-    if (diff === 1) return capital ? 'Morgen' : 'morgen';
+    if (diff === 0) return capital ? tx.Today : tx.today;
+    if (diff === 1) return capital ? tx.Tomorrow : tx.tomorrow;
     return fmtWeekday.format(ms);
   }
 
@@ -64,26 +78,26 @@
   function fmtIn(ms) {
     const total = Math.max(1, Math.ceil(ms / MINUTE));
     const d = Math.floor(total / 1440), h = Math.floor(total % 1440 / 60), m = total % 60;
-    if (d) return d + (d === 1 ? ' Tag' : ' Tagen') + (h ? ' ' + h + ' Std.' : '');
-    if (h) return h + ' Std.' + (m ? ' ' + m + ' Min.' : '');
-    return m + ' Min.';
+    if (d) return d + (d === 1 ? tx.day : tx.days) + (h ? ' ' + h + tx.hour : '');
+    if (h) return h + tx.hour + (m ? ' ' + m + tx.min : '');
+    return m + tx.min;
   }
 
   function daysSummary(days) {
-    if (!days.length) return 'Einmalig';
-    if (days.length === 7) return 'Täglich';
+    if (!days.length) return tx.once;
+    if (days.length === 7) return tx.daily;
     const key = [...days].sort().join();
-    if (key === '1,2,3,4,5') return 'Mo–Fr';
-    if (key === '0,6') return 'Wochenende';
-    const short = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    if (key === '1,2,3,4,5') return tx.workdays;
+    if (key === '0,6') return tx.weekend;
+    const short = tx.short;
     return [1, 2, 3, 4, 5, 6, 0].filter(d => days.includes(d)).map(d => short[d]).join(', ');
   }
 
   function greeting(now) {
     const hour = new Date(now).getHours();
-    if (hour >= 4 && hour < 11) return 'Guten Morgen';
-    if (hour >= 11 && hour < 18) return 'Guten Tag';
-    return 'Guten Abend';
+    if (hour >= 4 && hour < 11) return tx.morning;
+    if (hour >= 11 && hour < 18) return tx.noon;
+    return tx.evening;
   }
 
   /** Abschnitt eines Laufs: sunset, night, sunrise, snooze, ring – bei „Nur Einschlaflicht“ sunset und done. */
@@ -104,5 +118,5 @@
     return Math.max(50, Math.min(base, nextBoundary));
   }
 
-  return {MINUTE, pad2, parseTime, nextWake, plan, dayOffset, dayWord, fmtIn, daysSummary, greeting, phaseAt, nextDelay};
+  return {setLanguage, MINUTE, pad2, parseTime, nextWake, plan, dayOffset, dayWord, fmtIn, daysSummary, greeting, phaseAt, nextDelay};
 }));

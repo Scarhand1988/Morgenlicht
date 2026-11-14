@@ -1,8 +1,8 @@
 {
-  "name": "Morgenlicht",
-  "short_name": "Morgenlicht",
-  "description": "Lichtwecker: Sonnenaufgang auf dem Display und sanfte Naturtöne.",
-  "lang": "de",
+  "name": "Sunrise Clock",
+  "short_name": "Sunrise Clock",
+  "description": "Light alarm clock: a sunrise on your screen and gentle nature sounds.",
+  "lang": "en",
   "start_url": "Morgenlicht.html",
   "scope": "./",
   "display": "standalone",
