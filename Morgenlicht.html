@@ -54,11 +54,16 @@
   </section>
 
   <section class="panel lead-panel">
-    <div class="row">
+    <div class="setting">
+      <label class="row-label" for="lightOn"><span>Sonnenaufgang-Licht</span><span class="hint" id="lightOnHint">Das Display wird vor dem Wecken langsam heller</span></label>
+      <input type="checkbox" id="lightOn" checked>
+    </div>
+    <div class="row" id="leadRow">
       <label class="row-label" for="duration"><span>Lichtvorlauf</span><span class="hint" id="leadHint"></span></label>
       <output id="durationOut" for="duration">30 Min.</output>
     </div>
     <input type="range" id="duration" min="10" max="30" step="5" value="30">
+    <p class="hint" id="lightOffHint" hidden>Aus: Der Wecker klingelt nur mit Ton, das Display bleibt vorher dunkel.</p>
   </section>
 
   <section class="panel sound-panel" aria-labelledby="sounds-label">
@@ -100,11 +105,17 @@
       <select id="scene"><option value="flat" selected>Fläche</option><option value="sun">Mit Sonne</option></select>
     </div>
     <div class="setting">
+      <label class="row-label" for="brightnessOn"><span>Helligkeit selbst einstellen</span><span class="hint">Aus: Das Licht wird am Ende voll hell</span></label>
+      <input type="checkbox" id="brightnessOn" checked>
+    </div>
+    <div id="brightnessBox">
+    <div class="setting">
       <label for="brightness">Helligkeit des Lichts</label>
       <input type="range" id="brightness" min="10" max="100" step="5" value="100">
       <output id="brightnessOut" for="brightness">100 %</output>
     </div>
     <p class="hint">Wie hell der Sonnenaufgang am Ende wird. Bei 100 % gibt das Display sein volles Licht, kleinere Werte machen den Verlauf dunkler. „Sonnenaufgang testen“ zeigt dir das Ergebnis.</p>
+    </div>
     <div class="setting">
       <label class="row-label" for="sleep"><span>Einschlaflicht</span><span class="hint">Warmes Licht dimmt langsam herunter</span></label>
       <select id="sleep"><option value="0" selected>Aus</option><option value="10">10 Min.</option><option value="20">20 Min.</option><option value="30">30 Min.</option></select>

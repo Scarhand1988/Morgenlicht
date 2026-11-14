@@ -15,6 +15,8 @@ const volumeEl = $('volume');
 const snoozeSel = $('snooze');
 const vibrateEl = $('vibrate');
 const brightnessEl = $('brightness');
+const lightOnEl = $('lightOn');
+const brightnessOnEl = $('brightnessOn');
 const sceneSel = $('scene');
 const sleepSel = $('sleep');
 const sleepSoundEl = $('sleepSound');
@@ -64,6 +66,8 @@ try {
   if (hasOption(sleepSel, s.sleep)) sleepSel.value = s.sleep;
   if (hasOption(sceneSel, s.scene)) sceneSel.value = s.scene;
   if (Number(s.brightness) >= 10 && Number(s.brightness) <= 100) brightnessEl.value = String(s.brightness);
+  if (typeof s.lightOn === 'boolean') lightOnEl.checked = s.lightOn;
+  if (typeof s.brightnessOn === 'boolean') brightnessOnEl.checked = s.brightnessOn;
   if (typeof s.vibrate === 'boolean') vibrateEl.checked = s.vibrate;
   if (typeof s.sleepSound === 'boolean') sleepSoundEl.checked = s.sleepSound;
 } catch {}
@@ -71,17 +75,17 @@ try {
 function save() {
   try {
     localStorage.setItem(SET_KEY, JSON.stringify({
-      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value),
+      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, brightnessOn:brightnessOnEl.checked,
       snooze:snoozeSel.value, sleep:sleepSel.value, scene:sceneSel.value,
       vibrate:vibrateEl.checked, sleepSound:sleepSoundEl.checked
     }));
   } catch {}
 }
-const brightness = () => Number(brightnessEl.value) / 100;
+const brightness = () => brightnessOnEl.checked ? Number(brightnessEl.value) / 100 : 1;
 const dim = rgb => rgb.map(channel => Math.round(channel * brightness()));
 const volume = () => Number(volumeEl.value) / 100;
 const setText = (id, text) => { const el = $(id); if (el.textContent !== text) el.textContent = text; };
-const settingsNow = () => ({wake:wake.value, days, lead:Number(duration.value), sleep:Number(sleepSel.value)});
+const settingsNow = () => ({wake:wake.value, days, lead:lightOnEl.checked ? Number(duration.value) : 0, sleep:Number(sleepSel.value)});
 const sleepOnlyMinutes = () => Number(sleepSel.value) || SLEEP_ONLY_DEFAULT;
 
 function setFill(range) {
@@ -93,7 +97,11 @@ function updateOverview() {
   const p = Z.plan(settingsNow(), now);
   setText('clockText', wake.value);
   clockBtn.setAttribute('aria-label', 'Weckzeit ' + wake.value + ', ändern');
-  setText('lightStart', p.shortened ? 'Licht startet sofort' : 'Licht ab ' + fmtTime.format(p.start));
+  $('leadRow').hidden = !lightOnEl.checked;
+  $('lightOffHint').hidden = lightOnEl.checked;
+  duration.hidden = !lightOnEl.checked;
+  $('brightnessBox').hidden = !brightnessOnEl.checked;
+  setText('lightStart', !lightOnEl.checked ? 'Ohne Licht' : p.shortened ? 'Licht startet sofort' : 'Licht ab ' + fmtTime.format(p.start));
   setText('lightRing', 'klingelt ' + Z.dayWord(p.end, now, false) + ' in ' + Z.fmtIn(p.end - now));
   setText('leadHint', p.shortened ? 'Start sofort (zu wenig Zeit)' : 'Start ' + fmtTime.format(p.start));
   setText('daysSummary', Z.daysSummary(days));
@@ -768,6 +776,7 @@ duration.addEventListener('change', () => { save(); updateOverview(); });
 sleepSel.addEventListener('change', () => { save(); updateOverview(); });
 [snoozeSel, vibrateEl, sleepSoundEl, sceneSel, brightnessEl].forEach(el => el.addEventListener('change', save));
 brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
+[lightOnEl, brightnessOnEl].forEach(el => el.addEventListener('change', () => { save(); updateOverview(); }));
 volumeEl.addEventListener('input', () => {
   updateOverview();
   save();
