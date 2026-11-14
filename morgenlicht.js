@@ -14,6 +14,7 @@ const listen = $('listen');
 const volumeEl = $('volume');
 const snoozeSel = $('snooze');
 const vibrateEl = $('vibrate');
+const brightnessEl = $('brightness');
 const sceneSel = $('scene');
 const sleepSel = $('sleep');
 const sleepSoundEl = $('sleepSound');
@@ -62,6 +63,7 @@ try {
   if (hasOption(snoozeSel, s.snooze)) snoozeSel.value = s.snooze;
   if (hasOption(sleepSel, s.sleep)) sleepSel.value = s.sleep;
   if (hasOption(sceneSel, s.scene)) sceneSel.value = s.scene;
+  if (Number(s.brightness) >= 10 && Number(s.brightness) <= 100) brightnessEl.value = String(s.brightness);
   if (typeof s.vibrate === 'boolean') vibrateEl.checked = s.vibrate;
   if (typeof s.sleepSound === 'boolean') sleepSoundEl.checked = s.sleepSound;
 } catch {}
@@ -69,12 +71,14 @@ try {
 function save() {
   try {
     localStorage.setItem(SET_KEY, JSON.stringify({
-      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value),
+      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value),
       snooze:snoozeSel.value, sleep:sleepSel.value, scene:sceneSel.value,
       vibrate:vibrateEl.checked, sleepSound:sleepSoundEl.checked
     }));
   } catch {}
 }
+const brightness = () => Number(brightnessEl.value) / 100;
+const dim = rgb => rgb.map(channel => Math.round(channel * brightness()));
 const volume = () => Number(volumeEl.value) / 100;
 const setText = (id, text) => { const el = $(id); if (el.textContent !== text) el.textContent = text; };
 const settingsNow = () => ({wake:wake.value, days, lead:Number(duration.value), sleep:Number(sleepSel.value)});
@@ -94,9 +98,10 @@ function updateOverview() {
   setText('leadHint', p.shortened ? 'Start sofort (zu wenig Zeit)' : 'Start ' + fmtTime.format(p.start));
   setText('daysSummary', Z.daysSummary(days));
   setText('volumeOut', volumeEl.value + ' %');
+  setText('brightnessOut', brightnessEl.value + ' %');
   setText('durationOut', duration.value + ' Min.');
   setText('sleepOnly', 'Nur Einschlaflicht · ' + sleepOnlyMinutes() + ' Min.');
-  [duration, volumeEl].forEach(setFill);
+  [duration, volumeEl, brightnessEl].forEach(setFill);
 }
 function updateSelection() {
   soundButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.sound === selected)));
@@ -328,7 +333,7 @@ function colorAt(progress) {
   const [start, dark] = lightColors[endIndex - 1];
   const [end, bright] = lightColors[endIndex];
   const fraction = (progress - start) / (end - start);
-  return dark.map((channel, index) => Math.round(channel + (bright[index] - channel) * fraction));
+  return dim(dark.map((channel, index) => Math.round(channel + (bright[index] - channel) * fraction)));
 }
 function paint(progress) {
   stage.style.background = 'rgb(' + colorAt(progress).join(',') + ')';
@@ -683,7 +688,7 @@ function openConfirm() {
   $('confirmGo').focus();
 }
 function showFlash() {
-  flashDlg.style.background = 'rgb(' + END_COLOR.join(',') + ')';
+  flashDlg.style.background = 'rgb(' + dim(END_COLOR).join(',') + ')';
   flashDlg.showModal();
   clearTimeout(flashTimer);
   flashTimer = setTimeout(() => flashDlg.close(), 5000);
@@ -761,7 +766,8 @@ timeDlg.addEventListener('keydown', event => { if (event.key === 'Enter' && even
 duration.addEventListener('input', updateOverview);
 duration.addEventListener('change', () => { save(); updateOverview(); });
 sleepSel.addEventListener('change', () => { save(); updateOverview(); });
-[snoozeSel, vibrateEl, sleepSoundEl, sceneSel].forEach(el => el.addEventListener('change', save));
+[snoozeSel, vibrateEl, sleepSoundEl, sceneSel, brightnessEl].forEach(el => el.addEventListener('change', save));
+brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
 volumeEl.addEventListener('input', () => {
   updateOverview();
   save();
