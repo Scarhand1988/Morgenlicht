@@ -16,6 +16,7 @@ const snoozeSel = $('snooze');
 const vibrateEl = $('vibrate');
 const brightnessEl = $('brightness');
 const lightOnEl = $('lightOn');
+const clockOnEl = $('clockOn');
 const brightnessOnEl = $('brightnessOn');
 const sceneSel = $('scene');
 const sleepSel = $('sleep');
@@ -68,6 +69,7 @@ try {
   if (Number(s.brightness) >= 10 && Number(s.brightness) <= 100) brightnessEl.value = String(s.brightness);
   if (typeof s.lightOn === 'boolean') lightOnEl.checked = s.lightOn;
   if (typeof s.brightnessOn === 'boolean') brightnessOnEl.checked = s.brightnessOn;
+  if (typeof s.clockOn === 'boolean') clockOnEl.checked = s.clockOn;
   if (typeof s.vibrate === 'boolean') vibrateEl.checked = s.vibrate;
   if (typeof s.sleepSound === 'boolean') sleepSoundEl.checked = s.sleepSound;
 } catch {}
@@ -75,7 +77,7 @@ try {
 function save() {
   try {
     localStorage.setItem(SET_KEY, JSON.stringify({
-      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, brightnessOn:brightnessOnEl.checked,
+      wake:wake.value, duration:duration.value, selected, days, volume:Number(volumeEl.value), brightness:Number(brightnessEl.value), lightOn:lightOnEl.checked, clockOn:clockOnEl.checked, brightnessOn:brightnessOnEl.checked,
       snooze:snoozeSel.value, sleep:sleepSel.value, scene:sceneSel.value,
       vibrate:vibrateEl.checked, sleepSound:sleepSoundEl.checked
     }));
@@ -92,6 +94,9 @@ function setFill(range) {
   const share = (range.value - range.min) / (range.max - range.min) * 100;
   range.style.setProperty('--fill', share + '%');
 }
+/** Uhrzeit in der Nachtansicht ein- oder ausblenden */
+function applyClock() { $('nightTime').hidden = !clockOnEl.checked; }
+applyClock();
 function updateOverview() {
   const now = Date.now();
   const p = Z.plan(settingsNow(), now);
@@ -777,6 +782,7 @@ sleepSel.addEventListener('change', () => { save(); updateOverview(); });
 [snoozeSel, vibrateEl, sleepSoundEl, sceneSel, brightnessEl].forEach(el => el.addEventListener('change', save));
 brightnessEl.addEventListener('input', () => { updateOverview(); save(); });
 [lightOnEl, brightnessOnEl].forEach(el => el.addEventListener('change', () => { save(); updateOverview(); }));
+clockOnEl.addEventListener('change', () => { save(); applyClock(); });
 volumeEl.addEventListener('input', () => {
   updateOverview();
   save();
